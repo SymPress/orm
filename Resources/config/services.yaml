@@ -1,0 +1,61 @@
+parameters:
+    orm.entity_paths: []
+    orm.entity_classes: []
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    SymPress\Orm\:
+        resource: '../../src/'
+        exclude:
+            - '../../src/OrmBundle.php'
+            - '../../src/Cache/CacheInterface.php'
+            - '../../src/Collection/'
+            - '../../src/Dbal/ConnectionInterface.php'
+            - '../../src/Dbal/SqlPlatformInterface.php'
+            - '../../src/Event/Events.php'
+            - '../../src/Event/LifecycleEventArgs.php'
+            - '../../src/Event/PreUpdateEventArgs.php'
+            - '../../src/Mapping/'
+            - '../../src/Metadata/AssociationMetadata.php'
+            - '../../src/Metadata/ClassMetadata.php'
+            - '../../src/Metadata/ColumnMetadata.php'
+            - '../../src/Metadata/EmbeddedMetadata.php'
+            - '../../src/Metadata/IndexMetadata.php'
+            - '../../src/Metadata/JoinColumnMetadata.php'
+            - '../../src/Metadata/JoinTableMetadata.php'
+            - '../../src/Query/CompiledQuery.php'
+            - '../../src/Query/DqlCompiler.php'
+
+    SymPress\Orm\Cache\CacheInterface:
+        alias: SymPress\Orm\Cache\ArrayCache
+
+    SymPress\Orm\Dbal\ConnectionInterface:
+        alias: SymPress\Orm\Dbal\WpdbConnection
+
+    SymPress\Orm\Dbal\SqlPlatformInterface:
+        alias: SymPress\Orm\Dbal\WordPressSqlPlatform
+
+    SymPress\Orm\EntityManager:
+        arguments:
+            $database: '@SymPress\Orm\Dbal\ConnectionInterface'
+        public: true
+
+    SymPress\Orm\Schema\SchemaTool:
+        arguments:
+            $database: '@SymPress\Orm\Dbal\ConnectionInterface'
+        public: true
+
+    SymPress\Orm\Metadata\EntityClassRegistry:
+        arguments:
+            $bundleMetadata: '%kernel.bundles_metadata%'
+            $paths: '%orm.entity_paths%'
+            $classes: '%orm.entity_classes%'
+        public: true
+
+    SymPress\Orm\Bridge\Migration\OrmMigrationRegistrar:
+        tags:
+            - { name: kernel.hook, hook: 'db_migration_register', method: register, accepted_args: 1 }

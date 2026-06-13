@@ -1,0 +1,87 @@
+{
+    "name": "sympress/orm",
+    "description": "Doctrine-inspired ORM primitives for WordPress projects that keep wpdb as the database runtime.",
+    "type": "library",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Brian Schäffner",
+            "email": "brian.schaeffner@sympress.de",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.5",
+        "ext-json": "*",
+        "symfony/console": "^8.0"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^10.5",
+        "sympress/coding-standards": "@dev",
+        "sympress/kernel": "@dev",
+        "sympress/migration": "@dev"
+    },
+    "autoload": {
+        "psr-4": {
+            "SymPress\\Orm\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SymPress\\Orm\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "kernel": {
+            "bundle": "SymPress\\Orm\\OrmBundle",
+            "entry": "orm"
+        }
+    },
+    "scripts": {
+        "cs": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php ../../bin/package-quality.php cs"
+        ],
+        "cs:fix": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php ../../bin/package-quality.php cs:fix"
+        ],
+        "static-analysis": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php ../../bin/package-quality.php static-analysis"
+        ],
+        "tests": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php ../../bin/package-quality.php tests"
+        ],
+        "qa": [
+            "@cs",
+            "@static-analysis",
+            "@tests"
+        ]
+    },
+    "config": {
+        "sort-packages": true,
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "./../*",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
+    "suggest": {
+        "sympress/kernel": "Enables automatic service registration and console command discovery.",
+        "sympress/migration": "Enables ORM schema migrations through the SymPress migration runner."
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
