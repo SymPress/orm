@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<ruleset name="SymPress ORM Package">
+    <description>
+        SymPress coding standard audit for the ORM package.
+    </description>
+
+    <arg name="colors"/>
+    <arg value="sp"/>
+    <arg name="basepath" value="."/>
+
+    <config name="testVersion" value="8.5-"/>
+    <config name="text_domain" value="orm"/>
+
+    <file>src</file>
+    <file>tests</file>
+
+    <exclude-pattern>vendor/*</exclude-pattern>
+    <exclude-pattern>.phpunit.cache/*</exclude-pattern>
+    <exclude-pattern>tests/bootstrap.php</exclude-pattern>
+
+    <rule ref="SymPress-WordPress">
+        <exclude name="PSR1.Files.SideEffects.FoundWithSymbols"/>
+        <exclude name="PSR1.Methods.CamelCapsMethodName.NotCamelCaps"/>
+        <exclude name="SlevomatCodingStandard.Attributes.AttributesOrder.IncorrectOrder"/>
+        <exclude name="SlevomatCodingStandard.Classes.ForbiddenPublicProperty.ForbiddenPublicProperty"/>
+        <exclude name="SlevomatCodingStandard.Classes.RequireConstructorPropertyPromotion.RequiredConstructorPropertyPromotion"/>
+        <exclude name="SlevomatCodingStandard.Commenting.DocCommentSpacing.IncorrectLinesCountBetweenDifferentAnnotationsTypes"/>
+        <exclude name="SlevomatCodingStandard.Commenting.InlineDocCommentDeclaration.MissingVariable"/>
+        <exclude name="SlevomatCodingStandard.Commenting.RequireOneLineDocComment.MultiLineDocComment"/>
+        <exclude name="SlevomatCodingStandard.Commenting.RequireOneLinePropertyDocComment.MultiLinePropertyComment"/>
+        <exclude name="SlevomatCodingStandard.ControlStructures.EarlyExit.EarlyExitNotUsed"/>
+        <exclude name="SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter"/>
+        <exclude name="SlevomatCodingStandard.Namespaces.ReferenceUsedNamesOnly.ReferenceViaFullyQualifiedName"/>
+        <exclude name="SlevomatCodingStandard.Operators.RequireOnlyStandaloneIncrementAndDecrementOperators.PreIncrementOperatorNotUsedStandalone"/>
+        <exclude name="SlevomatCodingStandard.Variables.DisallowSuperGlobalVariable.DisallowedSuperGlobalVariable"/>
+        <exclude name="Squiz.PHP.GlobalKeyword.NotAllowed"/>
+        <exclude name="Squiz.PHP.DisallowMultipleAssignments.Found"/>
+        <exclude name="SymPress.Arrays.ArrayDoubleArrowAlignment.AssignmentsNotAligned"/>
+        <exclude name="SymPress.Classes.AccessorNaming.GetterRequired"/>
+        <exclude name="SymPress.Classes.AccessorNaming.SetterRequired"/>
+        <exclude name="SymPress.Classes.PropertyLimit.TooManyProperties"/>
+        <exclude name="SymPress.Complexity.NestingLevel.High"/>
+        <exclude name="SymPress.ControlStructures.DisallowElse.ElseFound"/>
+        <exclude name="SymPress.Files.LineLength.TooLong"/>
+        <exclude name="SymPress.Formatting.AlphabeticalUseStatements.MustBeSortedAlphabetically"/>
+        <exclude name="SymPress.Functions.ArgumentTypeDeclaration.NoArgumentType"/>
+        <exclude name="SymPress.Functions.DisallowGlobalFunction.Found"/>
+        <exclude name="SymPress.Functions.FunctionLength.TooLong"/>
+        <exclude name="SymPress.Functions.ReturnTypeDeclaration.NoReturnType"/>
+        <exclude name="SymPress.Variables.RedundantAssignment.Found"/>
+        <exclude name="WordPress.PHP.DevelopmentFunctions.error_log_var_export"/>
+        <exclude name="WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize"/>
+        <exclude name="WordPress.Security.EscapeOutput.ExceptionNotEscaped"/>
+        <exclude name="WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents"/>
+        <exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents"/>
+        <exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_mkdir"/>
+        <exclude name="WordPress.WP.AlternativeFunctions.json_encode_json_encode"/>
+    </rule>
+
+    <rule ref="SymPress.Namespaces.Psr4">
+        <properties>
+            <property name="psr4" type="array">
+                <element key="SymPress\Orm" value="src"/>
+                <element key="SymPress\Orm\Tests" value="tests"/>
+            </property>
+        </properties>
+    </rule>
+</ruleset>
