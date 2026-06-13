@@ -4,14 +4,10 @@ declare(strict_types=1);
 
 namespace SymPress\Orm;
 
-final readonly class LockMode
+enum LockMode: int
 {
-    public const int NONE = 0;
-    public const int OPTIMISTIC = 1;
-    public const int PESSIMISTIC_READ = 2;
-    public const int PESSIMISTIC_WRITE = 4;
-
-    private function __construct()
-    {
-    }
+    case NONE = 0;
+    case OPTIMISTIC = 1;
+    case PESSIMISTIC_READ = 2;
+    case PESSIMISTIC_WRITE = 4;
 }

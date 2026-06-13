@@ -280,15 +280,11 @@ final class EntityManager
         return $this->unitOfWork->contains($entity);
     }
 
-    /**
-     * @param 'NEW'|'MANAGED'|'DETACHED'|'REMOVED' $default
-     * @return 'NEW'|'MANAGED'|'DETACHED'|'REMOVED'
-     */
-    public function getEntityState(object $entity, string $default = EntityState::DETACHED): string
+    public function getEntityState(object $entity, EntityState $default = EntityState::DETACHED): EntityState
     {
-        $state = $this->unitOfWork->entityState($entity, '');
+        $state = $this->unitOfWork->entityState($entity, null);
 
-        if ($state !== '') {
+        if ($state instanceof EntityState) {
             return $state;
         }
 
@@ -367,7 +363,7 @@ final class EntityManager
         return $this->unitOfWork->registerManaged($entity, $metadata, $data);
     }
 
-    public function lock(object $entity, int $lockMode, mixed $lockVersion = null): void
+    public function lock(object $entity, LockMode $lockMode, mixed $lockVersion = null): void
     {
         $this->assertOpen();
 
@@ -1144,7 +1140,7 @@ final class EntityManager
         }
     }
 
-    private function executePessimisticLock(object $entity, ClassMetadata $metadata, int $lockMode): void
+    private function executePessimisticLock(object $entity, ClassMetadata $metadata, LockMode $lockMode): void
     {
         $where = $this->identifierWhere($entity, $metadata);
 

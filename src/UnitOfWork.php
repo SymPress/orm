@@ -12,7 +12,7 @@ final class UnitOfWork
     /** @var array<int, object> */
     private array $managed = [];
 
-    /** @var array<int, 'MANAGED'|'REMOVED'> */
+    /** @var array<int, EntityState> */
     private array $states = [];
 
     /** @var array<int, ClassMetadata> */
@@ -115,11 +115,7 @@ final class UnitOfWork
         return ($this->states[spl_object_id($entity)] ?? null) === EntityState::MANAGED;
     }
 
-    /**
-     * @param ''|'NEW'|'MANAGED'|'DETACHED'|'REMOVED' $default
-     * @return ''|'NEW'|'MANAGED'|'DETACHED'|'REMOVED'
-     */
-    public function entityState(object $entity, string $default = EntityState::DETACHED): string
+    public function entityState(object $entity, ?EntityState $default = EntityState::DETACHED): ?EntityState
     {
         $id = spl_object_id($entity);
 

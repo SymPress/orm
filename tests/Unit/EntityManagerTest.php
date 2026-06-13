@@ -8,7 +8,9 @@ use PHPUnit\Framework\TestCase;
 use SymPress\Orm\Cache\ArrayCache;
 use SymPress\Orm\EntityHydrator;
 use SymPress\Orm\EntityManager;
+use SymPress\Orm\EntityState;
 use SymPress\Orm\Exception\OptimisticLockException;
+use SymPress\Orm\LockMode;
 use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Tests\Fixtures\CachedArticle;
@@ -38,10 +40,13 @@ final class EntityManagerTest extends TestCase
     {
         $log = new MutableEmailLog('log-1', new \DateTimeImmutable('2026-06-13 10:00:00'), 'queued');
 
+        self::assertSame(EntityState::NEW, $this->entityManager->getEntityState($log));
+
         $this->entityManager->persist($log);
 
         self::assertSame([], $this->database->inserted);
         self::assertTrue($this->entityManager->contains($log));
+        self::assertSame(EntityState::MANAGED, $this->entityManager->getEntityState($log));
 
         $this->entityManager->flush();
 
@@ -152,6 +157,22 @@ final class EntityManagerTest extends TestCase
         $this->expectException(OptimisticLockException::class);
 
         $entityManager->flush();
+    }
+
+    public function testPessimisticLockUsesBackedEnum(): void
+    {
+        $log = new MutableEmailLog('log-1', new \DateTimeImmutable('2026-06-13 10:00:00'), 'queued');
+
+        $this->entityManager->getConnection()->beginTransaction();
+        $this->entityManager->lock($log, LockMode::PESSIMISTIC_WRITE);
+
+        self::assertSame(
+            [
+                'START TRANSACTION',
+                "SELECT 1 FROM `wp_sympress_mailer_logs` WHERE `id` = 'log-1' FOR UPDATE",
+            ],
+            $this->database->queries,
+        );
     }
 
     public function testSecondLevelCacheUsesRegionsAndDmlEvictsIt(): void
