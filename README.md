@@ -1,5 +1,7 @@
 # SymPress ORM
 
+> **Status:** WIP (Work in Progress)
+
 Doctrine-inspired ORM primitives for WordPress projects that keep `wpdb` as the
 database runtime.
 
