@@ -18,9 +18,9 @@
     "require-dev": {
         "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^10.5",
-        "sympress/coding-standards": "@dev",
-        "sympress/kernel": "@dev",
-        "sympress/migration": "@dev"
+        "sympress/coding-standards": "dev-main",
+        "sympress/kernel": "dev-main",
+        "sympress/migration": "dev-main"
     },
     "autoload": {
         "psr-4": {
