@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SymPress\Orm\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
+use SymPress\Orm\Dbal\ConnectionProvider;
 use SymPress\Orm\Dbal\WordPressSqlPlatform;
 use SymPress\Orm\Dbal\WpdbConnection;
 
@@ -51,6 +52,29 @@ final class DbalTest extends TestCase
             $connection->executeStatement('SELECT %s', 'ready');
 
             self::assertSame(["SELECT 'ready'"], $database->queries);
+        } finally {
+            if ($previousDatabase instanceof \wpdb) {
+                $GLOBALS['wpdb'] = $previousDatabase;
+            } else {
+                unset($GLOBALS['wpdb']);
+            }
+        }
+    }
+
+    public function testConnectionProviderNormalizesWpdbAndResolvesGlobalConnectionLazily(): void
+    {
+        $database = new \wpdb();
+        $database->prefix = 'custom_';
+
+        self::assertSame('custom_', ConnectionProvider::fromDatabase($database)->connection()->tablePrefix());
+
+        $previousDatabase = $GLOBALS['wpdb'] ?? null;
+        $globalDatabase = new \wpdb();
+        $globalDatabase->prefix = 'global_';
+        $GLOBALS['wpdb'] = $globalDatabase;
+
+        try {
+            self::assertSame('global_', ConnectionProvider::fromDatabase(null)->connection()->tablePrefix());
         } finally {
             if ($previousDatabase instanceof \wpdb) {
                 $GLOBALS['wpdb'] = $previousDatabase;
