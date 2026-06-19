@@ -7,8 +7,8 @@ namespace SymPress\Orm;
 use SymPress\Orm\Collection\Collection;
 use SymPress\Orm\Collection\PersistentCollection;
 use SymPress\Orm\Cache\CacheInterface;
+use SymPress\Orm\Dbal\ConnectionProvider;
 use SymPress\Orm\Dbal\ConnectionInterface;
-use SymPress\Orm\Dbal\WpdbConnection;
 use SymPress\Orm\Exception\EntityManagerClosedException;
 use SymPress\Orm\Exception\OptimisticLockException;
 use SymPress\Orm\Exception\PessimisticLockException;
@@ -27,6 +27,7 @@ use SymPress\Orm\Metadata\JoinTableMetadata;
 use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Query\CompiledQuery;
 use SymPress\Orm\Query\DqlCompiler;
+use SymPress\Orm\Query\DqlExtensionRegistry;
 use SymPress\Orm\Query\Query;
 use SymPress\Orm\Query\QueryBuilder;
 
@@ -37,7 +38,7 @@ final class EntityManager
 
     private UnitOfWork $unitOfWork;
 
-    private ?ConnectionInterface $connection;
+    private ConnectionProvider $connections;
 
     private EventManager $events;
 
@@ -49,11 +50,7 @@ final class EntityManager
     /** @var array<class-string, object> */
     private array $entityListenerInstances = [];
 
-    /** @var array<string, callable(string): string> */
-    private array $dqlFunctions = [];
-
-    /** @var list<callable(string): string> */
-    private array $outputWalkers = [];
+    private DqlExtensionRegistry $dqlExtensions;
 
     /** @var array<string, int> */
     private array $cacheRegionVersions = [];
@@ -68,12 +65,15 @@ final class EntityManager
         ?UnitOfWork $unitOfWork = null,
         ?EventManager $events = null,
         ?CacheInterface $secondLevelCache = null,
+        ?ConnectionProvider $connectionProvider = null,
+        ?DqlExtensionRegistry $dqlExtensions = null,
     ) {
 
         $this->unitOfWork = $unitOfWork ?? new UnitOfWork();
-        $this->connection = $this->normalizeConnection($database);
+        $this->connections = $connectionProvider ?? ConnectionProvider::fromDatabase($database);
         $this->events = $events ?? new EventManager();
         $this->secondLevelCache = $secondLevelCache;
+        $this->dqlExtensions = $dqlExtensions ?? new DqlExtensionRegistry();
     }
 
     /** @param class-string $entityClass */
@@ -453,9 +453,9 @@ final class EntityManager
 
     public function createNativeQuery(CompiledQuery $query): Query
     {
-        if ($this->outputWalkers !== []) {
+        if ($this->dqlExtensions->hasOutputWalkers()) {
             $query = new CompiledQuery(
-                $this->applyOutputWalkers($query->sql),
+                $this->dqlExtensions->applyOutputWalkers($query->sql),
                 $query->parameters,
                 $query->resultMetadata,
             );
@@ -509,42 +509,22 @@ final class EntityManager
 
     public function registerDqlFunction(string $name, callable $compiler): void
     {
-        $this->dqlFunctions[strtoupper($name)] = $compiler;
+        $this->dqlExtensions->registerFunction($name, $compiler);
     }
 
     public function addOutputWalker(callable $walker): void
     {
-        $this->outputWalkers[] = $walker;
+        $this->dqlExtensions->addOutputWalker($walker);
     }
 
     public function compileDqlFunctions(string $expression): string
     {
-        if ($this->dqlFunctions === []) {
-            return $expression;
-        }
-
-        return preg_replace_callback(
-            '/\b([A-Z_][A-Z0-9_]*)\s*\(([^()]*)\)/i',
-            function (array $matches): string {
-                $compiler = $this->dqlFunctions[strtoupper($matches[1])] ?? null;
-
-                if (!is_callable($compiler)) {
-                    return $matches[0];
-                }
-
-                return $compiler(trim($matches[2]));
-            },
-            $expression,
-        ) ?? $expression;
+        return $this->dqlExtensions->compileFunctions($expression);
     }
 
     public function applyOutputWalkers(string $sql): string
     {
-        foreach ($this->outputWalkers as $walker) {
-            $sql = $walker($sql);
-        }
-
-        return $sql;
+        return $this->dqlExtensions->applyOutputWalkers($sql);
     }
 
     /** @param class-string|null $className */
@@ -1691,24 +1671,7 @@ final class EntityManager
 
     private function connection(): ConnectionInterface
     {
-        if ($this->connection instanceof ConnectionInterface) {
-            return $this->connection;
-        }
-
-        return $this->connection = new WpdbConnection();
-    }
-
-    private function normalizeConnection(ConnectionInterface|\wpdb|null $database): ?ConnectionInterface
-    {
-        if ($database instanceof ConnectionInterface) {
-            return $database;
-        }
-
-        if ($database instanceof \wpdb) {
-            return new WpdbConnection($database);
-        }
-
-        return null;
+        return $this->connections->connection();
     }
 
     /** @param array<string|int, mixed> $parameters */
