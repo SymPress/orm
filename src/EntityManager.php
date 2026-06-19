@@ -663,7 +663,6 @@ final class EntityManager
         if ($version instanceof ColumnMetadata) {
             $where[$version->columnName] = $original[$version->columnName] ?? null;
             $nextVersion = (int) ($original[$version->columnName] ?? 0) + 1;
-            $this->hydrator->assign($entity, $version->propertyName, $nextVersion);
             $changes[$version->columnName] = $nextVersion;
         }
 
@@ -683,6 +682,10 @@ final class EntityManager
 
         if ($version instanceof ColumnMetadata && $result === 0) {
             throw OptimisticLockException::lockFailed($entity);
+        }
+
+        if ($version instanceof ColumnMetadata) {
+            $this->hydrator->assign($entity, $version->propertyName, $nextVersion);
         }
     }
 
