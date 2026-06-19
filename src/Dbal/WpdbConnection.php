@@ -140,5 +140,4 @@ final class WpdbConnection implements ConnectionInterface
 
         throw new \RuntimeException('Global $wpdb is not available.');
     }
-
 }
