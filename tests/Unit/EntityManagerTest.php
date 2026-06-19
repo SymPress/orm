@@ -6,6 +6,7 @@ namespace SymPress\Orm\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use SymPress\Orm\Cache\ArrayCache;
+use SymPress\Orm\Collection\PersistentCollection;
 use SymPress\Orm\EntityHydrator;
 use SymPress\Orm\EntityManager;
 use SymPress\Orm\EntityState;
@@ -154,9 +155,99 @@ final class EntityManagerTest extends TestCase
         $entityManager->persist($log);
         $log->status = 'sent';
 
-        $this->expectException(OptimisticLockException::class);
+        try {
+            $entityManager->flush();
+            self::fail('Expected an optimistic lock failure.');
+        } catch (OptimisticLockException) {
+            self::assertFalse($entityManager->isOpen());
+            self::assertSame(1, $log->version);
+            self::assertSame(['START TRANSACTION', 'ROLLBACK'], $database->queries);
+        }
+    }
 
+    public function testVersionedUpdateIncrementsVersionAfterSuccessfulFlush(): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [VersionedEmailLog::class]);
+        $database = new \wpdb();
+        $database->countResult = 1;
+        $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), $database);
+        $log = new VersionedEmailLog('log-1', 'queued', 1);
+
+        $entityManager->persist($log);
+        $log->status = 'sent';
         $entityManager->flush();
+
+        self::assertSame(2, $log->version);
+        self::assertSame(['status' => 'sent', 'version' => 2], $database->updated[0]['data']);
+        self::assertSame(['id' => 'log-1', 'version' => 1], $database->updated[0]['where']);
+        self::assertSame(['START TRANSACTION', 'COMMIT'], $database->queries);
+    }
+
+    public function testFlushRollsBackAndClosesEntityManagerWhenBatchInsertFails(): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [MutableEmailLog::class]);
+        $database = new class extends \wpdb {
+            private int $insertCalls = 0;
+
+            /** @param array<string, mixed> $data */
+            public function insert(string $table, array $data): bool|int
+            {
+                $this->insertCalls++;
+
+                if ($this->insertCalls === 2) {
+                    return false;
+                }
+
+                return parent::insert($table, $data);
+            }
+        };
+        $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), $database);
+
+        $entityManager->persist(new MutableEmailLog('log-1', new \DateTimeImmutable('2026-06-13 10:00:00'), 'queued'));
+        $entityManager->persist(new MutableEmailLog('log-2', new \DateTimeImmutable('2026-06-13 10:01:00'), 'queued'));
+
+        try {
+            $entityManager->flush();
+            self::fail('Expected the second insert to fail.');
+        } catch (\RuntimeException $exception) {
+            self::assertStringContainsString('Failed to insert', $exception->getMessage());
+            self::assertFalse($entityManager->isOpen());
+            self::assertCount(1, $database->inserted);
+            self::assertSame(['START TRANSACTION', 'ROLLBACK'], $database->queries);
+        }
+    }
+
+    public function testFlushPersistsEntityChangesAfterLazyCollectionLoad(): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [CachedAuthor::class, CachedArticle::class]);
+        $database = new \wpdb();
+        $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), $database);
+        $database->resultRows = [
+            ['id' => 'author-1', 'name' => 'Ada'],
+        ];
+
+        $author = $entityManager->find(CachedAuthor::class, 'author-1');
+
+        self::assertInstanceOf(CachedAuthor::class, $author);
+        self::assertInstanceOf(PersistentCollection::class, $author->articles);
+        self::assertFalse($author->articles->isInitialized());
+
+        $author->name = 'Grace';
+        $database->resultRows = [
+            ['id' => 'article-1', 'title' => 'First', 'author_id' => 'author-1'],
+        ];
+
+        $articles = $author->articles->toArray();
+        $entityManager->flush();
+
+        self::assertCount(1, $articles);
+        self::assertSame('article-1', $articles[0]->id);
+        self::assertSame(['name' => 'Grace'], $database->updated[0]['data']);
+        self::assertSame(['id' => 'author-1'], $database->updated[0]['where']);
+        self::assertSame([], $database->deleted);
     }
 
     public function testPessimisticLockUsesBackedEnum(): void
