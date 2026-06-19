@@ -306,6 +306,14 @@ $logs = $query->getResult();
 
 The generated SQL still goes through `$wpdb->prepare()`.
 
+Keep dynamic values out of query strings. The builder validates mapped field
+paths and prepares parameter values, but it cannot make interpolated strings
+safe. Put request data in `setParameter()` or `setParameters()` instead of
+concatenating it into `where()`, `andWhere()`, `orWhere()`, `having()`,
+`andHaving()`, `join()` conditions, or DQL strings. `orderBy()` only accepts
+mapped field paths; choose from an allow-list before passing user-controlled
+sort fields.
+
 Supported query builder features:
 
 - `select()`

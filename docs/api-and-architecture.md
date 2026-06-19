@@ -15,7 +15,7 @@ The SymPress ORM package provides Doctrine-inspired persistence primitives for W
 
 ### EntityManager
 
-`SymPress\Orm\EntityManager` is the primary application API. It owns the unit of work, metadata access, repositories, query creation, events, optional second-level cache, and a normalized database connection.
+`SymPress\Orm\EntityManager` is the primary application API. It owns the unit of work, metadata access, repositories, query creation, events, and optional second-level cache. Database connection normalization is delegated to `Dbal\ConnectionProvider`, while custom DQL functions and SQL output walkers are kept in `Query\DqlExtensionRegistry`.
 
 Typical usage:
 
@@ -29,7 +29,7 @@ $entityManager->persist($log);
 $entityManager->flush();
 ```
 
-When no `wpdb` instance is passed, the ORM resolves the global `$wpdb` lazily through `WpdbConnection`.
+When no `wpdb` instance is passed, the ORM resolves the global `$wpdb` lazily through `ConnectionProvider` and `WpdbConnection`.
 
 ### UnitOfWork
 
@@ -95,6 +95,8 @@ Supported DQL is a focused subset:
 - output walkers through `EntityManager::addOutputWalker()`
 
 `ORDER BY` accepts mapped field paths only, for example `l.createdAt`. Raw SQL fragments are rejected.
+
+Do not interpolate request values into `where()`, `having()`, join conditions, or DQL strings. Those APIs accept expression snippets so mapped fields can be compiled, but dynamic values are only safe when bound through named or positional parameters. User-controlled sort choices should be mapped through an allow-list before calling `orderBy()` or `addOrderBy()`.
 
 ### SchemaTool
 
