@@ -11,16 +11,14 @@
         }
     ],
     "require": {
-        "php": "^8.4",
+        "php": "^8.5",
         "ext-json": "*",
         "symfony/console": "^8.0"
     },
     "require-dev": {
-        "phpstan/phpstan": "^2.1",
-        "phpunit/phpunit": "^10.5",
-        "sympress/coding-standards": "dev-main",
         "sympress/kernel": "dev-main",
-        "sympress/migration": "dev-main"
+        "sympress/migration": "dev-main",
+        "sympress/qa": "dev-main"
     },
     "autoload": {
         "psr-4": {
@@ -41,19 +39,22 @@
     "scripts": {
         "cs": [
             "Composer\\Config::disableProcessTimeout",
-            "phpcs --standard=phpcs.xml.dist"
+            "qa cs"
         ],
         "cs:fix": [
             "Composer\\Config::disableProcessTimeout",
-            "phpcbf --standard=phpcs.xml.dist"
+            "qa cs:fix"
         ],
         "static-analysis": [
             "Composer\\Config::disableProcessTimeout",
-            "phpstan analyse --memory-limit=1G --no-progress -c phpstan.neon.dist"
+            "qa static-analysis"
         ],
         "tests": [
             "Composer\\Config::disableProcessTimeout",
-            "phpunit --configuration phpunit.xml.dist --no-coverage"
+            "qa tests"
+        ],
+        "test": [
+            "@tests"
         ],
         "qa": [
             "@cs",
@@ -66,7 +67,8 @@
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "allow-plugins": {
-            "dealerdirect/phpcodesniffer-composer-installer": true
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "phpstan/extension-installer": true
         }
     },
     "repositories": [
