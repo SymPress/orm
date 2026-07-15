@@ -57,6 +57,16 @@
         <exclude name="WordPress.WP.AlternativeFunctions.json_encode_json_encode"/>
     </rule>
 
+    <!-- Existing ORM hotspots; keep new files within the shared size limits. -->
+    <rule ref="SymPress.Files.FileLength.TooLong">
+        <exclude-pattern>src/EntityManager.php</exclude-pattern>
+    </rule>
+
+    <rule ref="SymPress.Classes.ClassLength.TooLong">
+        <exclude-pattern>src/EntityManager.php</exclude-pattern>
+        <exclude-pattern>src/Metadata/MetadataFactory.php</exclude-pattern>
+    </rule>
+
     <rule ref="SymPress.Namespaces.Psr4">
         <properties>
             <property name="psr4" type="array">

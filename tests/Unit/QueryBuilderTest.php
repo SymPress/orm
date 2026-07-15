@@ -153,6 +153,30 @@ final class QueryBuilderTest extends TestCase
         $entityManager->createQuery('SELECT l FROM EmailLog l ORDER BY l.status DESC, SLEEP(1)');
     }
 
+    public function testDqlCompilerRejectsMissingParameters(): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [EmailLog::class]);
+        $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), new \wpdb());
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Missing query parameter ":status".');
+
+        $entityManager->createQuery('UPDATE EmailLog l SET l.status = :status');
+    }
+
+    public function testDqlCompilerRejectsUnknownFields(): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [EmailLog::class]);
+        $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), new \wpdb());
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unknown field "missing"');
+
+        $entityManager->createQuery('DELETE FROM EmailLog l WHERE l.missing = :value', ['value' => 'x']);
+    }
+
     public function testRepositoryRejectsUnsafeCriteriaFields(): void
     {
         $metadataFactory = new MetadataFactory();

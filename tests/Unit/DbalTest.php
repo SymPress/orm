@@ -61,6 +61,24 @@ final class DbalTest extends TestCase
         }
     }
 
+    public function testWpdbConnectionFailsWhenNoDatabaseIsAvailable(): void
+    {
+        $hadDatabase = array_key_exists('wpdb', $GLOBALS);
+        $previousDatabase = $GLOBALS['wpdb'] ?? null;
+        unset($GLOBALS['wpdb']);
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Global $wpdb is not available.');
+
+            (new WpdbConnection())->tablePrefix();
+        } finally {
+            if ($hadDatabase) {
+                $GLOBALS['wpdb'] = $previousDatabase;
+            }
+        }
+    }
+
     public function testConnectionProviderNormalizesWpdbAndResolvesGlobalConnectionLazily(): void
     {
         $database = new \wpdb();
