@@ -17,7 +17,7 @@ final class KernelCatalogTest extends TestCase
         $filesystem->mkdir([$root . '/config', $root . '/entities', $root . '/bundle/src'], 0700);
         file_put_contents($root . '/bundle/composer.json', '{}');
         file_put_contents($root . '/composer.json', '{}');
-        file_put_contents($root . '/config/services.yaml', "parameters:\n    orm.entity_paths: ['{$root}/entities']\nservices:\n    SymPress\\Orm\\Metadata\\MetadataFactory:\n        public: true\n");
+        file_put_contents($root . '/config/services.yaml', "parameters:\n    orm.entity_paths: ['%kernel.project_dir%/entities']\nservices:\n    SymPress\\Orm\\Metadata\\MetadataFactory:\n        public: true\n");
         $this->entity($root . '/entities/First.php', 'First', 'first_table');
         $this->entity($root . '/bundle/src/Bundled.php', 'Bundled', 'bundled_table');
         $script = <<<'SCRIPT'

@@ -51,6 +51,8 @@ Flush lifecycle:
 
 With `OrmBundle`, the container compiler discovers configured and bundle entity classes, keeps their manager groups, and constructs immutable `ClassMetadata` graphs. The compiled container injects a `CompiledEntityCatalog` into `EntityClassRegistry` and `MetadataFactory`. Warm mapping queries require neither entity-directory discovery/tokenization nor mapping-attribute reflection, and can return metadata without autoloading entity classes. Association targets and inheritance discriminator classes are compiled even when they are outside the root manager class list. Embeddables, mapped superclasses and mapping traits contribute source resources.
 
+Configured path, class and manager parameter aliases (including `%kernel.project_dir%/entities`) are resolved before discovery.
+
 The compiler exports only explicit immutable ORM DTO types plus scalar/array values as ordinary DI definitions. The private Kernel PHP container constructs them with typed constructors; no serialized application objects or `unserialize()` input is used. This is mapping metadata, not cached database rows.
 
 Direct standalone construction without a catalog retains filesystem/attribute discovery. `register()` adds dynamic classes to this registry instance; uncatalogued metadata reflects once on demand. `refreshDiscovery()` explicitly returns an instance to standalone filesystem discovery, preserving manual registrations. `MetadataFactory::refresh($className)` invalidates one cached/compiled mapping for that instance; `refresh()` invalidates all. Already loaded PHP classes cannot acquire new attributes by editing their files: deploy/rebuild in a fresh process for source changes.
