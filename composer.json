@@ -13,12 +13,13 @@
     "require": {
         "php": "^8.5",
         "ext-json": "*",
-        "symfony/console": "^8.0"
+        "symfony/console": "^8.0",
+        "sympress/kernel": "dev-main"
     },
     "require-dev": {
-        "sympress/kernel": "dev-main",
         "sympress/migration": "dev-main",
-        "sympress/qa": "dev-main"
+        "sympress/qa": "dev-main",
+        "johnpbloch/wordpress": "^7.0"
     },
     "autoload": {
         "psr-4": {
@@ -34,7 +35,8 @@
         "kernel": {
             "bundle": "SymPress\\Orm\\OrmBundle",
             "entry": "orm"
-        }
+        },
+        "wordpress-install-dir": "vendor/wordpress/wordpress"
     },
     "scripts": {
         "cs": [
@@ -60,6 +62,10 @@
             "@cs",
             "@static-analysis",
             "@tests"
+        ],
+        "tests:database": [
+            "Composer\\Config::disableProcessTimeout",
+            "phpunit -c phpunit.database.xml.dist"
         ]
     },
     "config": {
@@ -68,7 +74,8 @@
         "preferred-install": "dist",
         "allow-plugins": {
             "dealerdirect/phpcodesniffer-composer-installer": true,
-            "phpstan/extension-installer": true
+            "phpstan/extension-installer": true,
+            "johnpbloch/wordpress-core-installer": true
         }
     },
     "repositories": [
@@ -81,7 +88,6 @@
         }
     ],
     "suggest": {
-        "sympress/kernel": "Enables automatic service registration and console command discovery.",
         "sympress/migration": "Enables ORM schema migrations through the SymPress migration runner."
     },
     "minimum-stability": "dev",

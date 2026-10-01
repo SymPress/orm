@@ -9,7 +9,7 @@ The SymPress ORM package provides Doctrine-inspired persistence primitives for W
 - Keep writes explicit and transactional through `EntityManager::flush()`.
 - Avoid raw column and identifier fragments in repository and query-builder APIs where mapped field names can be used.
 - Keep schema updates non-destructive by default.
-- Offer integration points for SymPress Kernel and Migration without requiring them at runtime.
+- Require SymPress Kernel for the package bundle and expose an optional SymPress Migration bridge.
 
 ## Main Components
 
@@ -227,7 +227,7 @@ The package provides console commands for schema SQL and migration diffs:
 - `MigrationDiffCommand`
 - `MappingInfoCommand`
 
-`--destructive` enables drop SQL for schema diffs when explicitly requested.
+`--destructive` enables column modifications, replacement indexes and drop SQL for schema diffs when explicitly requested. Existing column/index definitions are preserved by default.
 
 Migration integration is implemented by:
 
@@ -246,3 +246,46 @@ composer qa
 ```
 
 `composer cs` uses PHPCS with the SymPress WordPress ruleset. `composer static-analysis` runs PHPStan at max level against `src`. `composer tests` runs the unit and integration suites.
+
+## Reviewed schema and transaction behavior
+
+Automatically generated schema migrations are irreversible: `down()` raises an
+explicit exception in both the runtime bridge and generated migration classes.
+It never generates a blanket table drop. Write and review a separate inverse
+migration when a rollback is required. Migration namespaces are validated before
+creating any generated file.
+
+Schema versions hash the intended CREATE schema, independent of the remaining
+live diff. Applying a migration therefore does not change its version when the
+diff becomes empty; changing entity metadata does produce a pending version.
+The bridge publishes an explicit stable `orm-schema:<manager>` migration key.
+
+Entity discovery is cached for the registry lifetime. Schema inspection results
+are cached separately by manager and destructive policy; call
+`SchemaTool::refreshSchemaState()` after external schema changes or newly
+registered entity classes. `flush()` does not scan entity directories or inspect
+schema. It retains the existing scheduled-write and lifecycle contract.
+
+Repository criteria use `IS NULL` for null and parameterized `IN (...)` for
+arrays. Empty arrays compile to `IN (NULL)` and match no rows. The query-builder
+`andWhereLike(field, value)` validates the mapped field and binds an escaped
+contains pattern; literal percent and underscore characters cannot broaden it.
+Table lookups escape SQL LIKE wildcards through `wpdb::esc_like()`.
+
+Nested transactions use savepoints. Inner rollback preserves the outer
+transaction; committing the outer transaction cannot accidentally commit rolled
+back inner work. Failed transaction control statements raise an error.
+`composer tests:database` verifies these contracts with real WordPress `wpdb`
+and a disposable MariaDB database configured through `WORDPRESS_DB_*`.
+
+The generated migration bridge refuses incompatible existing-column/index changes
+unless the SchemaTool caller explicitly enables destructive updates. The changed
+intended-schema hash remains pending after that refusal; neither empty safe diffs
+nor a failed operation mark it applied. The CLI likewise requires --destructive
+before generating those changes. Review data compatibility before granting that
+intent. Ordinary additive diffs remain safe by default.
+
+The WordPress PHPStan profile is enabled. The DBAL adapter has three narrow
+`sympress.preparedSql` suppressions at its public generated/raw SQL boundary;
+callers remain responsible for vetted identifiers and bound values. No package
+or receiver-wide SQL policy exclusion is used.

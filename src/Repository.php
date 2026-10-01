@@ -80,8 +80,13 @@ class Repository
             $this->assertMappedLookupProperty($property);
             $index++;
             $parameter = sprintf('p_%d', $index);
+            if ($value === null) {
+                $builder->andWhere(sprintf('e.%s IS NULL', $property));
+                continue;
+            }
+
             $builder
-                ->andWhere(sprintf('e.%s = :%s', $property, $parameter))
+                ->andWhere(sprintf(is_array($value) ? 'e.%s IN (:%s)' : 'e.%s = :%s', $property, $parameter))
                 ->setParameter($parameter, $value);
         }
 

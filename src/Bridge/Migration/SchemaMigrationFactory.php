@@ -24,19 +24,26 @@ final readonly class SchemaMigrationFactory
         }
 
         $up = $this->schemaTool->getUpdateSchemaSql($manager);
-        $down = $this->schemaTool->getDropSchemaSql($manager);
+        $key = 'orm-schema:' . $manager;
         $version = 'schema:' . $this->schemaTool->getSchemaHash($manager);
 
-        return new class ($version, $up, $down) implements \SymPress\WordPress\Migration\Contract\Migration {
+        $blocked = $this->schemaTool->requiresDestructiveUpdates($manager);
+
+        return new class ($version, $up, $key, $blocked) implements \SymPress\WordPress\Migration\Contract\Migration {
             /**
              * @param list<string> $up
-             * @param list<string> $down
              */
             public function __construct(
                 private readonly string $version,
                 private readonly array $up,
-                private readonly array $down,
+                private readonly string $key,
+                private readonly bool $blocked,
             ) {
+            }
+
+            public function getMigrationKey(): string
+            {
+                return $this->key;
             }
 
             public function getVersion(): string
@@ -47,13 +54,17 @@ final readonly class SchemaMigrationFactory
             /** @return list<string> */
             public function up(): array
             {
+                if ($this->blocked) {
+                    throw new \RuntimeException('Schema changes require explicit destructive-update intent; the intended schema remains pending.');
+                }
+
                 return $this->up;
             }
 
             /** @return list<string> */
             public function down(): array
             {
-                return $this->down;
+                throw new \RuntimeException('Generated ORM schema migrations are irreversible; supply an explicit reviewed inverse migration.');
             }
         };
     }

@@ -34,7 +34,7 @@ final class DbalTest extends TestCase
         $connection->commit();
         $connection->rollBack();
 
-        self::assertSame(['START TRANSACTION', 'COMMIT', 'ROLLBACK'], $database->queries);
+        self::assertSame(['START TRANSACTION', 'COMMIT'], $database->queries);
     }
 
     public function testWpdbConnectionFallsBackToGlobalWpdb(): void
@@ -100,5 +100,40 @@ final class DbalTest extends TestCase
                 unset($GLOBALS['wpdb']);
             }
         }
+    }
+
+    public function testNestedRollbackPreservesOuterTransaction(): void
+    {
+        $database = new \wpdb();
+        $connection = new WpdbConnection($database);
+        $connection->beginTransaction();
+        $connection->beginTransaction();
+        $connection->rollBack();
+        self::assertTrue($connection->isTransactionActive());
+        $connection->commit();
+        self::assertFalse($connection->isTransactionActive());
+        self::assertSame(['START TRANSACTION', 'SAVEPOINT sympress_1', 'ROLLBACK TO SAVEPOINT sympress_1', 'COMMIT'], $database->queries);
+        self::assertSame('table\\_name\\%', $connection->escapeLike('table_name%'));
+    }
+
+    public function testFailedCommitStillAllowsRollback(): void
+    {
+        $database = new class extends \wpdb {
+            public function query(string $query): bool|int
+            {
+                $this->queries[] = $query;
+                return $query !== 'COMMIT';
+            }
+        };
+        $connection = new WpdbConnection($database);
+        $connection->beginTransaction();
+        try {
+            $connection->commit();
+            self::fail('Expected failed commit.');
+        } catch (\RuntimeException) {
+            self::assertTrue($connection->isTransactionActive());
+        }
+        $connection->rollBack();
+        self::assertSame(['START TRANSACTION', 'COMMIT', 'ROLLBACK'], $database->queries);
     }
 }
