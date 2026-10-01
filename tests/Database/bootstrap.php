@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+$databaseName = getenv('WORDPRESS_DB_NAME');
+
+if (!is_string($databaseName) || !preg_match('/^sympress_review_[a-z0-9_]+$/', $databaseName)) {
+    throw new RuntimeException('Database tests require an explicit disposable sympress_review_* database.');
+}
+
 $wordpressPath = dirname(__DIR__, 2) . '/vendor/wordpress/wordpress/';
 
 if (!is_file($wordpressPath . 'wp-settings.php')) {
@@ -22,7 +28,8 @@ $_SERVER['SERVER_PROTOCOL'] = 'HTTP/1.1';
 
 // phpcs:ignore SymPress.PHP.DisallowTopLevelDefine.Found -- runtime path needed by WordPress bootstrap.
 define('ABSPATH', $wordpressPath);
-define('DB_NAME', $environment('WORDPRESS_DB_NAME', 'wordpress'));
+// phpcs:ignore SymPress.PHP.DisallowTopLevelDefine.Found -- explicit disposable database selected at runtime.
+define('DB_NAME', $databaseName);
 define('DB_USER', $environment('WORDPRESS_DB_USER', 'wordpress'));
 define('DB_PASSWORD', $environment('WORDPRESS_DB_PASSWORD', 'wordpress'));
 define('DB_HOST', $environment('WORDPRESS_DB_HOST', '127.0.0.1:3306'));

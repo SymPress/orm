@@ -83,14 +83,14 @@ final class OrmDatabaseTest extends TestCase
         $tool->refreshSchemaState();
         $changed = $factory->create('default');
         self::assertNotSame($migration->getVersion(), $changed->getVersion());
-        $manager->registerMigration($changed);
+        $manager->replaceMigration($changed);
         self::assertTrue($manager->hasPendingMigrations());
         self::assertTrue($manager->runMigrations());
         self::assertFalse($manager->hasPendingMigrations());
         $narrowEntities = new EntityClassRegistry($metadata, classes: [NarrowEmailLog::class, NumericRole::class]);
         $narrowTool = new SchemaTool($metadata, $narrowEntities, new SchemaSqlGenerator(), $this->database);
         $narrowMigration = (new SchemaMigrationFactory($narrowTool))->create('default');
-        $manager->registerMigration($narrowMigration);
+        $manager->replaceMigration($narrowMigration);
         self::assertTrue($manager->hasPendingMigrations());
         try {
             $manager->runMigrations();
@@ -101,7 +101,7 @@ final class OrmDatabaseTest extends TestCase
         self::assertTrue($manager->hasPendingMigrations());
         self::assertSame($changed->getVersion(), $tracker->getVersion('default', 'orm-schema:default'));
         $reviewed = new SchemaTool($metadata, $narrowEntities, new SchemaSqlGenerator(), $this->database, allowDestructiveUpdates: true);
-        $manager->registerMigration((new SchemaMigrationFactory($reviewed))->create('default'));
+        $manager->replaceMigration((new SchemaMigrationFactory($reviewed))->create('default'));
         self::assertTrue($manager->runMigrations());
         self::assertFalse($manager->hasPendingMigrations());
         $reviewed->refreshSchemaState();

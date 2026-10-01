@@ -14,11 +14,11 @@
         "php": "^8.5",
         "ext-json": "*",
         "symfony/console": "^8.0",
-        "sympress/kernel": "dev-main"
+        "sympress/kernel": "^1.1.1"
     },
     "require-dev": {
-        "sympress/migration": "dev-main",
-        "sympress/qa": "dev-main",
+        "sympress/migration": "^1.0.2",
+        "sympress/qa": "^0.1.2",
         "johnpbloch/wordpress": "^7.0"
     },
     "autoload": {
@@ -78,18 +78,9 @@
             "johnpbloch/wordpress-core-installer": true
         }
     },
-    "repositories": [
-        {
-            "type": "path",
-            "url": "./../*",
-            "options": {
-                "symlink": true
-            }
-        }
-    ],
     "suggest": {
         "sympress/migration": "Enables ORM schema migrations through the SymPress migration runner."
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "prefer-stable": true
 }
