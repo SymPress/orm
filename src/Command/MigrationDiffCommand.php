@@ -48,6 +48,12 @@ final class MigrationDiffCommand extends Command
             return Command::FAILURE;
         }
 
+        if (!$input->getOption('destructive') && $this->schemaTool->requiresDestructiveUpdates($manager)) {
+            $io->error('Schema changes require explicit --destructive intent or a reviewed inverse migration.');
+
+            return Command::FAILURE;
+        }
+
         $up = $this->schemaTool->getUpdateSchemaSql($manager, (bool) $input->getOption('destructive'));
 
         if ($up === []) {
@@ -57,6 +63,21 @@ final class MigrationDiffCommand extends Command
         }
 
         $namespace = trim((string) $input->getOption('namespace'), '\\');
+
+        if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(?:\\\\[a-zA-Z_][a-zA-Z0-9_]*)*$/D', $namespace) !== 1) {
+            $io->error('Invalid migration namespace.');
+
+            return Command::INVALID;
+        }
+        try {
+            // @phpstan-ignore function.resultUnused (TOKEN_PARSE validates syntax by throwing ParseError.)
+            token_get_all('<?php namespace ' . $namespace . ';', TOKEN_PARSE);
+        } catch (\ParseError) {
+            $io->error('Invalid migration namespace.');
+
+            return Command::INVALID;
+        }
+
         $className = 'Version' . gmdate('YmdHis');
         $file = rtrim($path, '/') . '/' . $className . '.php';
 
@@ -66,7 +87,7 @@ final class MigrationDiffCommand extends Command
             return Command::FAILURE;
         }
 
-        file_put_contents($file, $this->migrationClass($namespace, $className, $up, $this->schemaTool->getDropSchemaSql($manager)));
+        file_put_contents($file, $this->migrationClass($namespace, $className, $up));
         $io->success(sprintf('Generated migration "%s".', $file));
 
         return Command::SUCCESS;
@@ -74,18 +95,16 @@ final class MigrationDiffCommand extends Command
 
     /**
      * @param list<string> $up
-     * @param list<string> $down
      */
-    private function migrationClass(string $namespace, string $className, array $up, array $down): string
+    private function migrationClass(string $namespace, string $className, array $up): string
     {
         return sprintf(
-            "<?php\n\n%s\n\nnamespace %s;\n\nuse SymPress\\WordPress\\Migration\\Domain\\AbstractMigration;\n\nfinal class %s extends AbstractMigration\n{\n    protected const string VERSION = '%s';\n\n    /** @return list<string> */\n    public function up(): array\n    {\n        return %s;\n    }\n\n    /** @return list<string> */\n    public function down(): array\n    {\n        return %s;\n    }\n}\n",
+            "<?php\n\n%s\n\nnamespace %s;\n\nuse SymPress\\WordPress\\Migration\\Domain\\AbstractMigration;\n\nfinal class %s extends AbstractMigration\n{\n    protected const string VERSION = '%s';\n\n    /** @return list<string> */\n    public function up(): array\n    {\n        return %s;\n    }\n\n    /** @return list<string> */\n    public function down(): array\n    {\n        throw new \RuntimeException('Generated ORM schema migrations are irreversible; supply an explicit reviewed inverse migration.');\n    }\n}\n",
             'declare(strict_types=1);',
             $namespace,
             $className,
             gmdate('Y.m.d.His'),
             $this->exportList($up, 2),
-            $this->exportList($down, 2),
         );
     }
 

@@ -69,6 +69,11 @@ if (!class_exists('wpdb')) {
             return 'DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
         }
 
+        public function esc_like(string $value): string
+        {
+            return addcslashes($value, '_%\\');
+        }
+
         public function prepare(string $query, mixed ...$args): string
         {
             return vsprintf(str_replace(['%d', '%f'], '%s', $query), array_map(

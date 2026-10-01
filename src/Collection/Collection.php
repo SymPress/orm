@@ -26,6 +26,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess
     /** @param TValue $element */
     public function add(mixed $element): void
     {
+        // @phpstan-ignore assign.propertyType (append explicitly supports integer keys as PHP ArrayAccess does.)
         $this->elements[] = $element;
     }
 
@@ -73,6 +74,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess
     public function offsetSet(mixed $offset, mixed $value): void
     {
         if ($offset === null) {
+            // @phpstan-ignore assign.propertyType (null ArrayAccess offset appends an integer key.)
             $this->elements[] = $value;
             return;
         }

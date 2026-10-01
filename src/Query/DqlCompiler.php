@@ -286,7 +286,7 @@ final readonly class DqlCompiler
         return preg_replace_callback(
             '/(?::([a-zA-Z_][a-zA-Z0-9_]*)|\?([0-9]+))/',
             static function (array $matches) use ($queryParameters, $entityManager, &$values): string {
-                $name = ($matches[1] ?? '') !== '' ? $matches[1] : ($matches[2] ?? '');
+                $name = $matches[1] !== '' ? $matches[1] : ($matches[2] ?? '');
                 $value = $queryParameters[$name] ?? null;
 
                 if (!array_key_exists($name, $queryParameters)) {

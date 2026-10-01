@@ -93,6 +93,19 @@ final class QueryBuilder
         return $this;
     }
 
+    public function andWhereLike(string $field, string $value): self
+    {
+        $this->compileFieldPath($field);
+        $parameter = 'like_' . count($this->parameters);
+
+        while (array_key_exists($parameter, $this->parameters)) {
+            $parameter .= '_';
+        }
+
+        return $this->andWhere(sprintf('%s LIKE :%s', $field, $parameter))
+            ->setParameter($parameter, '%' . addcslashes($value, '_%\\') . '%');
+    }
+
     public function orWhere(string $predicate): self
     {
         $previous = $this->where === [] ? '1 = 0' : sprintf('(%s)', implode(' AND ', $this->where));
@@ -493,7 +506,7 @@ final class QueryBuilder
         return preg_replace_callback(
             '/(?::([a-zA-Z_][a-zA-Z0-9_]*)|\?([0-9]+))/',
             function (array $matches) use (&$parameters): string {
-                $name = ($matches[1] ?? '') !== '' ? $matches[1] : ($matches[2] ?? '');
+                $name = $matches[1] !== '' ? $matches[1] : ($matches[2] ?? '');
                 $value = $this->parameters[$name] ?? null;
 
                 if (!array_key_exists($name, $this->parameters)) {

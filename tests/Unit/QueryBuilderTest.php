@@ -230,4 +230,32 @@ final class QueryBuilderTest extends TestCase
             $query->getSQL(),
         );
     }
+
+    public function testLikeHelperKeepsEscapedInputAsParameter(): void
+    {
+        $metadata = new MetadataFactory();
+        $manager = new EntityManager($metadata, new EntityClassRegistry($metadata, classes: [EmailLog::class]), new EntityHydrator(), new \wpdb());
+        $compiled = $manager->createQueryBuilder()->select('e')->from(EmailLog::class, 'e')->andWhereLike('e.status', "50%_off' OR 1=1")->compile();
+        self::assertStringContainsString('LIKE %s', $compiled->sql);
+        self::assertStringNotContainsString('OR 1=1', $compiled->sql);
+        self::assertSame(["%50\\%\\_off' OR 1=1%"], $compiled->parameters);
+    }
+
+    public function testRepositoryNullAndArrayCriteriaCompileWithoutBroadening(): void
+    {
+        $metadata = new MetadataFactory();
+        $database = new class extends \wpdb {
+            public function get_results(string $query, string|int $output = ARRAY_A): array
+            {
+                $this->queries[] = $query;
+                return [];
+            }
+        };
+        $manager = new EntityManager($metadata, new EntityClassRegistry($metadata, classes: [EmailLog::class]), new EntityHydrator(), $database);
+        $manager->getRepository(EmailLog::class)->findBy(['payload' => null, 'status' => ['queued', 'sent']]);
+        self::assertStringContainsString('`e`.`payload` IS NULL', $database->queries[0]);
+        self::assertStringContainsString("`e`.`status` IN ('queued', 'sent')", $database->queries[0]);
+        $manager->getRepository(EmailLog::class)->findBy(['status' => []]);
+        self::assertStringContainsString('IN (NULL)', $database->queries[1]);
+    }
 }

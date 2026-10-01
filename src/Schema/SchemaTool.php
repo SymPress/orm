@@ -13,16 +13,23 @@ use SymPress\Orm\Metadata\IndexMetadata;
 use SymPress\Orm\Metadata\JoinTableMetadata;
 use SymPress\Orm\Metadata\MetadataFactory;
 
-final readonly class SchemaTool
+final class SchemaTool
 {
-    private ?ConnectionInterface $connection;
+    private readonly ?ConnectionInterface $connection;
+
+    /** @var array<string, list<string>> */
+    private array $schemaChecks = [];
+
+    /** @var array<string, bool> */
+    private array $blockedSchemaChecks = [];
+    private bool $blockedUpdate = false;
 
     public function __construct(
-        private MetadataFactory $metadataFactory,
-        private EntityClassRegistry $entities,
-        private SchemaSqlGenerator $sql,
+        private readonly MetadataFactory $metadataFactory,
+        private readonly EntityClassRegistry $entities,
+        private readonly SchemaSqlGenerator $sql,
         ConnectionInterface|\wpdb|null $database = null,
-        private bool $allowDestructiveUpdates = false,
+        private readonly bool $allowDestructiveUpdates = false,
     ) {
 
         $this->connection = $this->normalizeConnection($database);
@@ -41,8 +48,15 @@ final readonly class SchemaTool
             return $this->schemaSql($manager);
         }
 
-        $statements = [];
         $destructive = $allowDestructiveUpdates ?? $this->allowDestructiveUpdates;
+        $cacheKey = ($manager ?? '*') . ':' . (int) $destructive;
+
+        if (isset($this->schemaChecks[$cacheKey])) {
+            return $this->schemaChecks[$cacheKey];
+        }
+
+        $statements = [];
+        $this->blockedUpdate = false;
 
         foreach ($this->metadataByTable($manager) as $metadata) {
             $statements = [
@@ -82,7 +96,22 @@ final readonly class SchemaTool
             }
         }
 
-        return $statements;
+        $this->blockedSchemaChecks[$cacheKey] = $this->blockedUpdate;
+
+        return $this->schemaChecks[$cacheKey] = $statements;
+    }
+
+    public function requiresDestructiveUpdates(?string $manager = null): bool
+    {
+        $this->getUpdateSchemaSql($manager);
+
+        return $this->blockedSchemaChecks[($manager ?? '*') . ':' . (int) $this->allowDestructiveUpdates] ?? false;
+    }
+
+    public function refreshSchemaState(): void
+    {
+        $this->schemaChecks = [];
+        $this->blockedSchemaChecks = [];
     }
 
     /** @return list<string> */
@@ -109,7 +138,7 @@ final readonly class SchemaTool
 
     public function getSchemaHash(?string $manager = null): string
     {
-        return substr(hash('sha256', implode("\n\n", $this->getUpdateSchemaSql($manager))), 0, 16);
+        return substr(hash('sha256', implode("\n\n", $this->getCreateSchemaSql($manager))), 0, 16);
     }
 
     /** @return list<string> */
@@ -245,7 +274,11 @@ final readonly class SchemaTool
 
             if (in_array($column->columnName, $existingColumns, true)) {
                 if (!$this->columnMatches($column, $existingColumnRows[$column->columnName])) {
-                    $statements[] = $this->sql->modifyColumnSql($table, $column);
+                    if ($destructive) {
+                        $statements[] = $this->sql->modifyColumnSql($table, $column);
+                    } else {
+                        $this->blockedUpdate = true;
+                    }
                 }
 
                 continue;
@@ -271,6 +304,11 @@ final readonly class SchemaTool
             }
 
             if (isset($existingIndexes[$index->name])) {
+                if (!$destructive) {
+                    $this->blockedUpdate = true;
+                    continue;
+                }
+
                 $statements[] = $this->sql->dropIndexSql($table, $index->name);
             }
 
@@ -311,7 +349,7 @@ final readonly class SchemaTool
 
     private function tableExists(string $table): bool
     {
-        return !in_array($this->connection?->fetchOne('SHOW TABLES LIKE %s', $table), [null, false, '', 0, '0'], true);
+        return !in_array($this->connection?->fetchOne('SHOW TABLES LIKE %s', $this->connection instanceof WpdbConnection ? $this->connection->escapeLike($table) : addcslashes($table, '_%\\')), [null, false, '', 0, '0'], true);
     }
 
     /** @return array<string, array<string, mixed>> */
@@ -387,6 +425,9 @@ final readonly class SchemaTool
 
     private function normalizeDefinition(string $definition): string
     {
+        // MySQL/MariaDB integer display widths do not change the stored type.
+        $definition = preg_replace('/\b(tinyint|smallint|mediumint|int|bigint)\(\d+\)/i', '$1', $definition) ?? $definition;
+
         return trim(preg_replace('/\s+/', ' ', strtolower($definition)) ?? $definition);
     }
 

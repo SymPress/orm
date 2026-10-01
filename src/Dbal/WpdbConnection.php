@@ -33,6 +33,11 @@ final class WpdbConnection implements ConnectionInterface
         return $this->database()->get_charset_collate();
     }
 
+    public function escapeLike(string $value): string
+    {
+        return $this->database()->esc_like($value);
+    }
+
     public function prepare(string $sql, mixed ...$parameters): string
     {
         if ($parameters === []) {
@@ -52,13 +57,14 @@ final class WpdbConnection implements ConnectionInterface
 
     public function fetchOne(string $sql, mixed ...$parameters): mixed
     {
+        // @phpstan-ignore sympress.preparedSql (Trusted DBAL SQL contract: query builders validate identifiers and bind values through this adapter.)
         return $this->database()->get_var($this->prepare($sql, ...$parameters));
     }
 
     public function fetchAllAssociative(string $sql, mixed ...$parameters): array
     {
         /** @var list<array<string, mixed>> $rows */
-        $rows = $this->database()->get_results($this->prepare($sql, ...$parameters), ARRAY_A);
+        $rows = $this->database()->get_results($this->prepare($sql, ...$parameters), ARRAY_A); // @phpstan-ignore sympress.preparedSql (Trusted DBAL SQL contract, validating identifiers and binding values before execution.)
 
         return $rows;
     }
@@ -80,6 +86,7 @@ final class WpdbConnection implements ConnectionInterface
 
     public function executeStatement(string $sql, mixed ...$parameters): bool|int
     {
+        // @phpstan-ignore sympress.preparedSql (Explicit DBAL raw SQL contract, including schema DDL and transaction control; values use prepare.)
         return $this->database()->query($this->prepare($sql, ...$parameters));
     }
 
@@ -90,8 +97,12 @@ final class WpdbConnection implements ConnectionInterface
 
     public function beginTransaction(): void
     {
-        if ($this->transactionNesting === 0) {
-            $this->executeStatement($this->platform->beginTransactionSql());
+        $sql = $this->transactionNesting === 0
+            ? $this->platform->beginTransactionSql()
+            : 'SAVEPOINT sympress_' . $this->transactionNesting;
+
+        if ($this->executeStatement($sql) === false) {
+            throw new \RuntimeException('Unable to begin transaction.');
         }
 
         $this->transactionNesting++;
@@ -103,22 +114,35 @@ final class WpdbConnection implements ConnectionInterface
             return;
         }
 
-        $this->transactionNesting--;
+        $remaining = $this->transactionNesting - 1;
 
-        if ($this->transactionNesting === 0) {
-            $this->executeStatement($this->platform->commitTransactionSql());
+        $sql = $remaining === 0
+            ? $this->platform->commitTransactionSql()
+            : 'RELEASE SAVEPOINT sympress_' . $remaining;
+
+        if ($this->executeStatement($sql) === false) {
+            throw new \RuntimeException('Unable to commit transaction.');
         }
+
+        $this->transactionNesting = $remaining;
     }
 
     public function rollBack(): void
     {
         if ($this->transactionNesting <= 0) {
-            $this->executeStatement($this->platform->rollbackTransactionSql());
             return;
         }
 
-        $this->transactionNesting = 0;
-        $this->executeStatement($this->platform->rollbackTransactionSql());
+        $remaining = $this->transactionNesting - 1;
+        $sql = $remaining === 0
+            ? $this->platform->rollbackTransactionSql()
+            : 'ROLLBACK TO SAVEPOINT sympress_' . $remaining;
+
+        if ($this->executeStatement($sql) === false) {
+            throw new \RuntimeException('Unable to roll back transaction.');
+        }
+
+        $this->transactionNesting = $remaining;
     }
 
     public function isTransactionActive(): bool
