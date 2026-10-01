@@ -47,15 +47,60 @@ final class MetadataFactory
     /** @var array<class-string, ClassMetadata> */
     private array $metadata = [];
 
+    /** @var array<class-string, true> */
+    private array $refreshed = [];
+
+    private bool $refreshAll = false;
+
+    /** @var array<string, true> */
+    private array $mappingFiles = [];
+
+    /** @return list<string> */
+    public function mappingResources(): array
+    {
+        $files = array_keys($this->mappingFiles);
+        sort($files);
+        return $files;
+    }
+
     public function __construct(
         private readonly NameConverter $names = new NameConverter(),
         private readonly ?CacheInterface $cache = null,
+        private readonly ?CompiledEntityCatalog $catalog = null,
     ) {
+    }
+
+    /** Explicitly refresh mappings after dynamic registration or a standalone source change.
+     *
+     * @param class-string|null $className
+     */
+    public function refresh(?string $className = null): void
+    {
+        if ($className === null) {
+            $this->metadata = [];
+            $this->refreshAll = true;
+            return;
+        }
+
+        unset($this->metadata[$className]);
+        $this->refreshed[$className] = true;
+    }
+
+    /** @param class-string $className */
+    private function compiledMetadata(string $className): ?ClassMetadata
+    {
+        return $this->refreshAll || isset($this->refreshed[$className])
+            ? null
+            : ($this->catalog?->metadata[$className] ?? null);
     }
 
     /** @param class-string $className */
     public function hasMetadataFor(string $className): bool
     {
+        if (isset($this->metadata[$className]) || $this->compiledMetadata($className) !== null) {
+            return true;
+        }
+
         return $this->entityAttribute($this->reflection($className)) instanceof Entity;
     }
 
@@ -66,10 +111,16 @@ final class MetadataFactory
             return $this->metadata[$className];
         }
 
+        $compiled = $this->compiledMetadata($className);
+
+        if ($compiled !== null) {
+            return $this->metadata[$className] = $compiled;
+        }
+
         $cacheKey = 'orm.metadata.' . str_replace('\\', '.', $className);
         $cached = $this->cache?->get($cacheKey);
 
-        if ($cached instanceof ClassMetadata) {
+        if (!$this->refreshAll && !isset($this->refreshed[$className]) && $cached instanceof ClassMetadata) {
             return $this->metadata[$className] = $cached;
         }
 
@@ -220,7 +271,25 @@ final class MetadataFactory
             throw new \InvalidArgumentException(sprintf('Class "%s" does not exist.', $className));
         }
 
-        return new \ReflectionClass($className);
+        $reflection = new \ReflectionClass($className);
+        $this->recordMappingFiles($reflection);
+        return $reflection;
+    }
+
+    /** @param \ReflectionClass<object> $reflection */
+    private function recordMappingFiles(\ReflectionClass $reflection): void
+    {
+        $file = $reflection->getFileName();
+        if (is_string($file)) {
+            $this->mappingFiles[$file] = true;
+        }
+        foreach ($reflection->getTraits() as $trait) {
+            $this->recordMappingFiles($trait);
+        }
+        $parent = $reflection->getParentClass();
+        if ($parent !== false) {
+            $this->recordMappingFiles($parent);
+        }
     }
 
     /** @param \ReflectionClass<object> $reflection */

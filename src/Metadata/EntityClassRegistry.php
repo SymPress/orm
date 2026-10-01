@@ -14,6 +14,8 @@ final class EntityClassRegistry
     /** @var array<string, list<class-string>> */
     private array $registered = [];
 
+    private bool $refreshDiscovery = false;
+
     /**
      * @param array<string, array{path?: string, package?: string, type?: string, entry?: string}> $bundleMetadata
      * @param list<string> $paths
@@ -25,6 +27,7 @@ final class EntityClassRegistry
         private readonly array $paths = [],
         array $classes = [],
         private readonly NameConverter $names = new NameConverter(),
+        private readonly ?CompiledEntityCatalog $catalog = null,
     ) {
 
         $this->registerConfiguredClasses($classes);
@@ -45,6 +48,13 @@ final class EntityClassRegistry
         }
 
         $this->registered[$manager] = array_values(array_unique($this->registered[$manager] ?? []));
+    }
+
+    /** Explicitly opt back into filesystem discovery for this registry instance. */
+    public function refreshDiscovery(): void
+    {
+        $this->discovered = null;
+        $this->refreshDiscovery = true;
     }
 
     /** @return list<class-string> */
@@ -107,6 +117,10 @@ final class EntityClassRegistry
     /** @return array<string, list<class-string>> */
     private function discoveredGroups(): array
     {
+        if ($this->catalog !== null && !$this->refreshDiscovery) {
+            return $this->catalog->groups;
+        }
+
         if ($this->discovered !== null) {
             return $this->discovered;
         }
@@ -151,7 +165,7 @@ final class EntityClassRegistry
     /** @return list<class-string> */
     private function discoverInPath(string $path): array
     {
-        if (!is_dir($path)) {
+        if (!is_dir($path) || is_link($path)) {
             return [];
         }
 
@@ -161,7 +175,7 @@ final class EntityClassRegistry
         );
 
         foreach ($iterator as $file) {
-            if (!$file instanceof \SplFileInfo || !$file->isFile() || $file->getExtension() !== 'php') {
+            if (!$file instanceof \SplFileInfo || $file->isLink() || !$file->isFile() || $file->getExtension() !== 'php') {
                 continue;
             }
 

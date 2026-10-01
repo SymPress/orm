@@ -12,6 +12,8 @@ services:
         resource: '../../src/'
         exclude:
             - '../../src/OrmBundle.php'
+            - '../../src/Compiler/'
+            - '../../src/Metadata/CompiledEntityCatalog.php'
             - '../../src/Cache/CacheInterface.php'
             - '../../src/Collection/'
             - '../../src/Dbal/ConnectionInterface.php'

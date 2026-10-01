@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace SymPress\Orm\Tests\Database;
 
 use PHPUnit\Framework\TestCase;
+use SymPress\Orm\Compiler\EntityCatalogPass;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Reference;
 use SymPress\Orm\Bridge\Migration\SchemaMigrationFactory;
 use SymPress\Orm\Dbal\WpdbConnection;
 use SymPress\Orm\EntityHydrator;
@@ -43,6 +47,35 @@ final class OrmDatabaseTest extends TestCase
         foreach (['sympress_mailer_logs', 'sympress_numeric_roles', 'orm_review_state', 'orm_review_state_history'] as $name) {
             $this->database->query($this->database->prepare('DROP TABLE IF EXISTS %i', $this->database->prefix . $name));
         }
+    }
+
+    public function testCompiledCatalogPersistsWithRealWpdbWithoutMappingReflection(): void
+    {
+        $container = new ContainerBuilder();
+        $container->setParameter('kernel.bundles_metadata', []);
+        $container->setParameter('orm.entity_paths', []);
+        $container->setParameter('orm.entity_classes', [EmailLog::class]);
+        $container->setDefinition(MetadataFactory::class, (new Definition(MetadataFactory::class))->setPublic(true));
+        $container->setDefinition(EntityClassRegistry::class, (new Definition(EntityClassRegistry::class, [new Reference(MetadataFactory::class)]))->setPublic(true));
+        $container->addCompilerPass(new EntityCatalogPass());
+        $container->compile(true);
+        $metadata = $container->get(MetadataFactory::class);
+        $entities = $container->get(EntityClassRegistry::class);
+        self::assertInstanceOf(MetadataFactory::class, $metadata);
+        self::assertInstanceOf(EntityClassRegistry::class, $entities);
+        $connection = new WpdbConnection($this->database);
+        $tool = new SchemaTool($metadata, $entities, new SchemaSqlGenerator(), $connection);
+        foreach ($tool->getCreateSchemaSql() as $sql) {
+            $connection->executeStatement($sql);
+        }
+        $manager = new EntityManager($metadata, $entities, new EntityHydrator(), $connection);
+        $manager->persist(new EmailLog('compiled', new \DateTimeImmutable(), 'queued'));
+        self::assertSame('0', $this->database->get_var('SELECT COUNT(*) FROM wp_sympress_mailer_logs'));
+        $manager->flush();
+        self::assertSame('1', $this->database->get_var('SELECT COUNT(*) FROM wp_sympress_mailer_logs'));
+        $manager->clear();
+        self::assertCount(1, $manager->getRepository(EmailLog::class)->findBy(['status' => 'queued']));
+        self::assertSame([], $metadata->mappingResources());
     }
 
     public function testSchemaBridgeKeepsAppliedIdentityAndFlushAndRollbackProtectRows(): void
