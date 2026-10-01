@@ -286,6 +286,9 @@ transaction; committing the outer transaction cannot accidentally commit rolled
 back inner work. Failed transaction control statements raise an error.
 `composer tests:database` verifies these contracts with real WordPress `wpdb`
 and a disposable MariaDB database configured through `WORDPRESS_DB_*`.
+The bootstrap requires an explicit `WORDPRESS_DB_NAME=sympress_review_*` value;
+it refuses general application databases. Required database CI fails skipped or
+incomplete tests and runs on pull requests, main and the weekly schedule.
 
 The generated migration bridge refuses incompatible existing-column/index changes
 unless the SchemaTool caller explicitly enables destructive updates. The changed
