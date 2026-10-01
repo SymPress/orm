@@ -55,6 +55,15 @@ final class MigrationBridgeTest extends TestCase
         $migration->down();
     }
 
+    public function testLegacySchemaIdentitiesAreExplicitAndScopedToEachManager(): void
+    {
+        $legacy = "Migration@anonymous\0/old/releases/1/SchemaMigrationFactory.php:40";
+        $factory = new SchemaMigrationFactory($this->tool(), ['default' => [$legacy]]);
+        self::assertSame([$legacy], $factory->create('default')->getLegacyMigrationKeys());
+        self::assertSame([], $factory->create('other')->getLegacyMigrationKeys());
+        self::assertSame([], (new SchemaMigrationFactory($this->tool()))->create('default')->getLegacyMigrationKeys());
+    }
+
     public function testGeneratedCommandUsesIrreversibleRollbackAndRejectsNamespaceInjection(): void
     {
         $path = sys_get_temp_dir() . '/orm-diff-' . bin2hex(random_bytes(4));
