@@ -260,6 +260,15 @@ live diff. Applying a migration therefore does not change its version when the
 diff becomes empty; changing entity metadata does produce a pending version.
 The bridge publishes an explicit stable `orm-schema:<manager>` migration key.
 
+For a deployment with applied anonymous records from the old bridge, provide
+their exact stored identities in `SchemaMigrationFactory`'s optional
+`$legacyMigrationKeys` constructor argument, keyed by manager name. The generated
+migration exposes those through `getLegacyMigrationKeys()`. Do not derive aliases
+from a basename, line number or schema hash. SymPress Migration refuses unmapped
+old anonymous state before execution; inspect the state with backups in place
+and configure the explicit mapping before deploying this identity transition.
+Versions and append-only history remain independent of that mapping.
+
 Entity discovery is cached for the registry lifetime. Schema inspection results
 are cached separately by manager and destructive policy; call
 `SchemaTool::refreshSchemaState()` after external schema changes or newly

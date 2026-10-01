@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace SymPress\Orm\Bridge\Migration;
 
 use SymPress\Orm\Schema\SchemaTool;
+use SymPress\WordPress\Migration\Contract\Migration;
 
 final readonly class SchemaMigrationFactory
 {
-    public function __construct(private SchemaTool $schemaTool)
-    {
+    /** @param array<string, list<string>> $legacyMigrationKeys Exact recorded identities by manager name. */
+    public function __construct(
+        private SchemaTool $schemaTool,
+        private array $legacyMigrationKeys = [],
+    ) {
     }
 
     public function isAvailable(): bool
@@ -29,21 +33,31 @@ final readonly class SchemaMigrationFactory
 
         $blocked = $this->schemaTool->requiresDestructiveUpdates($manager);
 
-        return new class ($version, $up, $key, $blocked) implements \SymPress\WordPress\Migration\Contract\Migration {
+        $legacy = $this->legacyMigrationKeys[$manager] ?? [];
+
+        return new class ($version, $up, $key, $blocked, $legacy) implements Migration {
             /**
              * @param list<string> $up
+             * @param list<string> $legacyKeys
              */
             public function __construct(
                 private readonly string $version,
                 private readonly array $up,
                 private readonly string $key,
                 private readonly bool $blocked,
+                private readonly array $legacyKeys,
             ) {
             }
 
             public function getMigrationKey(): string
             {
                 return $this->key;
+            }
+
+            /** @return list<string> */
+            public function getLegacyMigrationKeys(): array
+            {
+                return $this->legacyKeys;
             }
 
             public function getVersion(): string
