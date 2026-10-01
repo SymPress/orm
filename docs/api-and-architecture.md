@@ -49,7 +49,13 @@ Flush lifecycle:
 
 ### MetadataFactory and EntityClassRegistry
 
-`MetadataFactory` reads mapping attributes through reflection and produces immutable `ClassMetadata` graphs. `EntityClassRegistry` knows which entity classes belong to a manager and can discover entities from configured paths. Discovery is prefiltered before tokenization so directories with many PHP files do not cause unnecessary autoloading.
+With `OrmBundle`, the container compiler discovers configured and bundle entity classes, keeps their manager groups, and constructs immutable `ClassMetadata` graphs. The compiled container injects a `CompiledEntityCatalog` into `EntityClassRegistry` and `MetadataFactory`. Warm mapping queries require neither entity-directory discovery/tokenization nor mapping-attribute reflection, and can return metadata without autoloading entity classes. Association targets and inheritance discriminator classes are compiled even when they are outside the root manager class list. Embeddables, mapped superclasses and mapping traits contribute source resources.
+
+The compiler exports only explicit immutable ORM DTO types plus scalar/array values as ordinary DI definitions. The private Kernel PHP container constructs them with typed constructors; no serialized application objects or `unserialize()` input is used. This is mapping metadata, not cached database rows.
+
+Direct standalone construction without a catalog retains filesystem/attribute discovery. `register()` adds dynamic classes to this registry instance; uncatalogued metadata reflects once on demand. `refreshDiscovery()` explicitly returns an instance to standalone filesystem discovery, preserving manual registrations. `MetadataFactory::refresh($className)` invalidates one cached/compiled mapping for that instance; `refresh()` invalidates all. Already loaded PHP classes cannot acquire new attributes by editing their files: deploy/rebuild in a fresh process for source changes.
+
+Compiler resources include recursive entity directories (additions/removals), entity/parent/embeddable files (mapping contents), missing configured roots (creation), and the normal Kernel configuration resources. Mutable/debug Kernel freshness checks still inspect/hash these resources; eliminating those checks requires explicit immutable deployments. `SYMPRESS_KERNEL_IMMUTABLE_CACHE=1` with a changed-per-release `SYMPRESS_KERNEL_BUILD_ID` allows warm lookup without an entity filesystem walk. Mutating a release without changing that ID violates this policy. No automatic global cache of WordPress activation state is introduced.
 
 ### EntityHydrator
 
@@ -170,7 +176,7 @@ Available event names are defined in `SymPress\Orm\Event\Events`, including:
 
 ## Caching
 
-The cache layer is intentionally small and uses `CacheInterface`. The package includes `ArrayCache` for tests and simple in-process usage.
+The cache layer is intentionally small and uses `CacheInterface`. The package includes `ArrayCache` for request/process usage. Metadata compiled into the container persists safely between requests as mapping definitions; ArrayCache does not become a shared persistent entity/result cache. EntityManager region versions remain local to the manager instance. Do not substitute a shared data cache and claim coherent cross-process invalidation: that requires separately implemented durable region versions and write coordination. The default entity/query cache therefore provides no cross-request data hit promise.
 
 Two cache paths exist:
 
@@ -212,8 +218,9 @@ For schema updates, destructive drops are disabled by default to protect existin
 
 ## Performance Notes
 
-- Metadata is cached by `MetadataFactory` after the first reflection pass.
-- Entity discovery prefilters PHP files before tokenization.
+- With OrmBundle, discovery and immutable mapping are compiled into the private Kernel container; standalone instances cache their first discovery/reflection result.
+- Mutable Kernel freshness still checks source resources; immutable deployment identities avoid those checks explicitly.
+- Standalone discovery prefilters PHP files before tokenization and skips symlink files/directories.
 - The identity map returns already managed entities without re-querying.
 - `flush()` writes only scheduled or dirty entities.
 - Owning many-to-many synchronization uses collection snapshots and skips unchanged collections.
