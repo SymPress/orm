@@ -66,6 +66,14 @@ final class CompiledEntityCatalogTest extends TestCase
         self::assertSame([], $factory->mappingResources());
     }
 
+    public function testConfiguredClassAndManagerParameterAliasesResolveBeforeCompilation(): void
+    {
+        $container = $this->build(['%configured.manager%' => ['%configured.entity%']]);
+        $registry = $container->get(EntityClassRegistry::class);
+        self::assertInstanceOf(EntityClassRegistry::class, $registry);
+        self::assertSame([EmailLog::class], $registry->classes('configured'));
+    }
+
     public function testFreshProcessDumpUsesCatalogWithoutAutoloadingEntities(): void
     {
         $container = $this->build(['mail' => [EmailLog::class]]);
@@ -132,6 +140,8 @@ SCRIPT;
     private function build(array $classes): ContainerBuilder
     {
         $container = new ContainerBuilder();
+        $container->setParameter('configured.manager', 'configured');
+        $container->setParameter('configured.entity', EmailLog::class);
         $container->setParameter('kernel.bundles_metadata', []);
         $container->setParameter('orm.entity_paths', []);
         $container->setParameter('orm.entity_classes', $classes);

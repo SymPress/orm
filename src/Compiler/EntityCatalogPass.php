@@ -30,12 +30,13 @@ final class EntityCatalogPass implements CompilerPassInterface
             return;
         }
 
+        $parameters = $container->getParameterBag();
         /** @var array<string, array{path?: string, package?: string, type?: string, entry?: string}> $bundles */
-        $bundles = $container->getParameter('kernel.bundles_metadata');
+        $bundles = $parameters->resolveValue($container->getParameter('kernel.bundles_metadata'));
         /** @var list<string> $paths */
-        $paths = $container->getParameter('orm.entity_paths');
+        $paths = $parameters->resolveValue($container->getParameter('orm.entity_paths'));
         /** @var list<class-string>|array<string, list<class-string>> $classes */
-        $classes = $container->getParameter('orm.entity_classes');
+        $classes = $parameters->resolveValue($container->getParameter('orm.entity_classes'));
         $factory = new MetadataFactory();
         $registry = new EntityClassRegistry($factory, $bundles, $paths, $classes);
         $groups = $registry->groups();
