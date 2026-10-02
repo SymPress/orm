@@ -27,24 +27,20 @@ final readonly class SchemaMigrationFactory
             throw new \RuntimeException('sympress/migration is not available.');
         }
 
-        $up = $this->schemaTool->getUpdateSchemaSql($manager);
         $key = 'orm-schema:' . $manager;
         $version = 'schema:' . $this->schemaTool->getSchemaHash($manager);
 
-        $blocked = $this->schemaTool->requiresDestructiveUpdates($manager);
-
         $legacy = $this->legacyMigrationKeys[$manager] ?? [];
 
-        return new class ($version, $up, $key, $blocked, $legacy) implements Migration {
+        return new class ($version, $this->schemaTool, $manager, $key, $legacy) implements Migration {
             /**
-             * @param list<string> $up
              * @param list<string> $legacyKeys
              */
             public function __construct(
                 private readonly string $version,
-                private readonly array $up,
+                private readonly SchemaTool $schemaTool,
+                private readonly string $manager,
                 private readonly string $key,
-                private readonly bool $blocked,
                 private readonly array $legacyKeys,
             ) {
             }
@@ -68,11 +64,13 @@ final readonly class SchemaMigrationFactory
             /** @return list<string> */
             public function up(): array
             {
-                if ($this->blocked) {
+                $this->schemaTool->refreshSchemaState();
+                $up = $this->schemaTool->getUpdateSchemaSql($this->manager);
+                if ($this->schemaTool->requiresDestructiveUpdates($this->manager)) {
                     throw new \RuntimeException('Schema changes require explicit destructive-update intent; the intended schema remains pending.');
                 }
 
-                return $this->up;
+                return $up;
             }
 
             /** @return list<string> */

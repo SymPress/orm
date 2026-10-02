@@ -12,6 +12,7 @@ use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Schema\SchemaSqlGenerator;
 use SymPress\Orm\Schema\SchemaTool;
 use SymPress\Orm\Tests\Fixtures\EmailLog;
+use SymPress\Orm\Tests\Fixtures\NarrowEmailLog;
 use Symfony\Component\Console\Tester\CommandTester;
 
 final class MigrationBridgeTest extends TestCase
@@ -62,6 +63,37 @@ final class MigrationBridgeTest extends TestCase
         self::assertSame([$legacy], $factory->create('default')->getLegacyMigrationKeys());
         self::assertSame([], $factory->create('other')->getLegacyMigrationKeys());
         self::assertSame([], (new SchemaMigrationFactory($this->tool()))->create('default')->getLegacyMigrationKeys());
+    }
+
+    public function testSchemaPlanRefreshesLiveStateAfterFactoryCreation(): void
+    {
+        $database = new class extends \wpdb {
+            public int $statusLength = 10;
+
+            public function get_results(string $query, string|int $output = ARRAY_A): array
+            {
+                if (!str_starts_with($query, 'DESCRIBE')) {
+                    return [];
+                }
+                return [
+                    ['Field' => 'id', 'Type' => 'varchar(32)', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'created_at', 'Type' => 'datetime', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'status', 'Type' => 'varchar(' . $this->statusLength . ')', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'payload', 'Type' => 'longtext', 'Null' => 'YES', 'Default' => null, 'Extra' => ''],
+                ];
+            }
+        };
+        $database->countResult = 1;
+        $metadata = new MetadataFactory();
+        $tool = new SchemaTool($metadata, new EntityClassRegistry($metadata, classes: [NarrowEmailLog::class]), new SchemaSqlGenerator(), $database, allowDestructiveUpdates: true);
+        $tool->getUpdateSchemaSql('default');
+        $migration = (new SchemaMigrationFactory($tool))->create('default');
+        $version = $migration->getVersion();
+        $database->statusLength = 20;
+        self::assertStringContainsString('MODIFY COLUMN status varchar(10)', implode("\n", $migration->up()));
+        self::assertSame($version, $migration->getVersion());
+        $database->statusLength = 10;
+        self::assertStringNotContainsString('MODIFY COLUMN status', implode("\n", $migration->up()));
     }
 
     public function testGeneratedCommandUsesIrreversibleRollbackAndRejectsNamespaceInjection(): void

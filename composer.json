@@ -17,9 +17,12 @@
         "sympress/kernel": "^1.1.1"
     },
     "require-dev": {
-        "sympress/migration": "^1.0.2",
+        "sympress/migration": "^1.0.4",
         "sympress/qa": "^0.1.2",
         "johnpbloch/wordpress": "^7.0"
+    },
+    "conflict": {
+        "sympress/migration": "<1.0.4"
     },
     "autoload": {
         "psr-4": {
@@ -79,7 +82,7 @@
         }
     },
     "suggest": {
-        "sympress/migration": "Enables ORM schema migrations through the SymPress migration runner."
+        "sympress/migration": "^1.0.4 enables ORM schema migrations with live SQL planning under the migration lock."
     },
     "minimum-stability": "stable",
     "prefer-stable": true
