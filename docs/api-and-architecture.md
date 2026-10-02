@@ -268,6 +268,11 @@ Schema versions hash the intended CREATE schema, independent of the remaining
 live diff. Applying a migration therefore does not change its version when the
 diff becomes empty; changing entity metadata does produce a pending version.
 The bridge publishes an explicit stable `orm-schema:<manager>` migration key.
+It computes only intended-schema identity at creation. Its forward SQL and
+destructive-policy check refresh live schema state during execution. Use the
+Migration 1.0.4 or later WordPress executor with the deferred operation contract so this
+inspection runs after the advisory lock is acquired; older/custom executors
+without that contract retain their existing operation semantics.
 
 For a deployment with applied anonymous records from the old bridge, provide
 their exact stored identities in `SchemaMigrationFactory`'s optional

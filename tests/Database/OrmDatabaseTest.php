@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SymPress\Orm\Tests\Database;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use SymPress\Orm\Compiler\EntityCatalogPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
@@ -154,5 +155,48 @@ final class OrmDatabaseTest extends TestCase
         $connection->rollBack();
         $connection->commit();
         self::assertSame(['outer'], $this->database->get_col('SELECT id FROM wp_sympress_mailer_logs'));
+    }
+
+    /** @return iterable<string, array{bool}> */
+    public static function schemaPolicies(): iterable
+    {
+        yield 'explicit destructive intent' => [true];
+        yield 'safe default' => [false];
+    }
+
+    #[DataProvider('schemaPolicies')]
+    public function testDestructiveSchemaPlanRefreshesChangesBetweenGenerationAndLockAcquisition(bool $destructive): void
+    {
+        $metadata = new MetadataFactory();
+        $entities = new EntityClassRegistry($metadata, classes: [NarrowEmailLog::class]);
+        $tool = new SchemaTool($metadata, $entities, new SchemaSqlGenerator(), $this->database, allowDestructiveUpdates: $destructive);
+        $executor = new WordPressSqlExecutor($this->database);
+        self::assertTrue($executor->execute($tool->getCreateSchemaSql('default')));
+        self::assertSame([], $tool->getUpdateSchemaSql('default'));
+        $migration = (new SchemaMigrationFactory($tool))->create('default');
+        $version = $migration->getVersion();
+        // Another worker changes the live schema after generation, before the operation lock.
+        self::assertNotFalse($this->database->query('ALTER TABLE wp_sympress_mailer_logs MODIFY COLUMN status varchar(40) NOT NULL'));
+        self::assertSame(1, $this->database->insert('wp_sympress_mailer_logs', ['id' => 'preserved', 'created_at' => '2026-10-02 10:00:00', 'status' => 'queued']));
+        $manager = new MigrationManager(
+            PluginSlug::fromString('drift'),
+            new MigrationLifecycle(new MigrationTracker($this->database, $this->database->prefix . 'orm_review_state'), $executor),
+            MigrationCollection::fromIterable([$migration]),
+        );
+        if ($destructive) {
+            self::assertTrue($manager->runMigrations());
+        } else {
+            try {
+                $manager->runMigrations();
+                self::fail('A newly incompatible live schema must remain pending.');
+            } catch (\RuntimeException $exception) {
+                self::assertStringContainsString('explicit', $exception->getMessage());
+            }
+        }
+        self::assertSame($version, $migration->getVersion());
+        $columns = $this->database->get_results('DESCRIBE wp_sympress_mailer_logs', ARRAY_A);
+        self::assertSame($destructive ? 'varchar(10)' : 'varchar(40)', array_column($columns, 'Type', 'Field')['status']);
+        self::assertSame('queued', $this->database->get_var("SELECT status FROM wp_sympress_mailer_logs WHERE id = 'preserved'"));
+        self::assertSame(!$destructive, $manager->hasPendingMigrations());
     }
 }
