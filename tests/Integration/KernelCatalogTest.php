@@ -12,6 +12,16 @@ final class KernelCatalogTest extends TestCase
 {
     public function testFreshKernelProcessesDiscoverBuildAndInvalidateTheCompiledCatalog(): void
     {
+        $this->exerciseCachePolicy(false);
+    }
+
+    public function testContentHashPolicyDetectsChangesWithPreservedSizeAndTimestamp(): void
+    {
+        $this->exerciseCachePolicy(true);
+    }
+
+    private function exerciseCachePolicy(bool $contentHashes): void
+    {
         $root = sys_get_temp_dir() . '/orm-kernel-' . bin2hex(random_bytes(8));
         $filesystem = new Filesystem();
         $filesystem->mkdir([$root . '/config', $root . '/entities', $root . '/bundle/src'], 0700);
@@ -23,6 +33,7 @@ final class KernelCatalogTest extends TestCase
         $script = <<<'SCRIPT'
 require $argv[1];
 $root = $argv[2];
+putenv('SYMPRESS_KERNEL_CONTENT_HASHES=' . $argv[3]);
 spl_autoload_register(static function (string $class) use ($root): void {
     if (!str_starts_with($class, 'ReviewCatalog\\')) { return; }
     $name = substr($class, strlen('ReviewCatalog\\'));
@@ -57,6 +68,7 @@ if ($hit) {
 }
 echo json_encode(['hit'=>$hit,'groups'=>$r->groups(),'tables'=>$tables,'class'=>$c->getParameter('kernel.container_class')], JSON_THROW_ON_ERROR);
 SCRIPT;
+        $script = str_replace('$argv[3]', $contentHashes ? "'1'" : "'0'", $script);
         try {
             $first = $this->consume($script, $root);
             self::assertFalse($first['hit']);
@@ -76,8 +88,9 @@ SCRIPT;
             $mtime = filemtime($file);
             $this->entity($file, 'First', 'other_table');
             self::assertIsInt($mtime);
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_touch -- preserve timestamp for invalidation regression.
-            touch($file, $mtime);
+            // Default freshness uses mtime/size; content hashes also detect a preserved timestamp.
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_touch -- exercise the selected cache freshness contract.
+            touch($file, $contentHashes ? $mtime : $mtime + 1);
             $changed = $this->consume($script, $root);
             self::assertFalse($changed['hit']);
             self::assertSame('other_table', $changed['tables']['ReviewCatalog\\First']);

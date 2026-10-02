@@ -14,7 +14,7 @@
         "php": "^8.5",
         "ext-json": "*",
         "symfony/console": "^8.0",
-        "sympress/kernel": "^1.1.1"
+        "sympress/kernel": "^1.1.3"
     },
     "require-dev": {
         "sympress/migration": "^1.0.7",
