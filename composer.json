@@ -17,7 +17,7 @@
         "sympress/kernel": "^1.1.1"
     },
     "require-dev": {
-        "sympress/migration": "^1.0.4",
+        "sympress/migration": "^1.0.7",
         "sympress/qa": "^0.1.2",
         "johnpbloch/wordpress": "^7.0"
     },

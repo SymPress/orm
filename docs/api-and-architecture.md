@@ -300,6 +300,17 @@ transaction; committing the outer transaction cannot accidentally commit rolled
 back inner work. Failed transaction control statements raise an error.
 `composer tests:database` verifies these contracts with real WordPress `wpdb`
 and a disposable MariaDB database configured through `WORDPRESS_DB_*`.
+The database matrix also runs MySQL 8.4. Its upgrade fixture executes the immutable
+ORM 0.2.0 sources (`4ef5ec98a971e27c1180084ada76befbb8bf0b5a`) in a separate
+process to create the old schema, persist data and record the anonymous identity.
+It then adopts the exact recorded identity with Migration 1.0.7, applies the
+current additive schema and verifies identical rows, stable current identity,
+retained legacy history and repeat-run idempotence. Set
+`SYMPRESS_ORM_LEGACY_SOURCE` to that source checkout for local database tests.
+Only disposable `sympress_review_*` databases are accepted. The runtime conflict
+with Migration below 1.0.4 stays stricter than the earlier 1.0.2 minimum because
+the deferred execution interface is needed; development upgrade tests require
+Migration 1.0.7 for its explicit adopt API.
 The bootstrap requires an explicit `WORDPRESS_DB_NAME=sympress_review_*` value;
 it refuses general application databases. Required database CI fails skipped or
 incomplete tests and runs on pull requests, main and the weekly schedule.
