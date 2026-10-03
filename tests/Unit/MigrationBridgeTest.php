@@ -13,6 +13,7 @@ use SymPress\Orm\Schema\SchemaSqlGenerator;
 use SymPress\Orm\Schema\SchemaTool;
 use SymPress\Orm\Tests\Fixtures\EmailLog;
 use SymPress\Orm\Tests\Fixtures\NarrowEmailLog;
+use SymPress\Orm\Tests\Fixtures\PortableValueEntity;
 use Symfony\Component\Console\Tester\CommandTester;
 
 final class MigrationBridgeTest extends TestCase
@@ -115,6 +116,72 @@ final class MigrationBridgeTest extends TestCase
             // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- disposable test artifact, no WordPress runtime.
             unlink($files[0]);
             // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- disposable test directory.
+            rmdir($path);
+        }
+    }
+
+    public function testGeneratedMigrationUsesRuntimePrefixWithoutChangingSqlValues(): void
+    {
+        $path = sys_get_temp_dir() . '/orm-portable-diff-' . bin2hex(random_bytes(4));
+        $metadata = new MetadataFactory();
+        $tool = new SchemaTool($metadata, new EntityClassRegistry($metadata, classes: [EmailLog::class, PortableValueEntity::class]), new SchemaSqlGenerator(), new \wpdb());
+        $tester = new CommandTester(new MigrationDiffCommand($tool));
+        self::assertSame(0, $tester->execute(['--path' => $path, '--namespace' => 'PortableReviewMigration']));
+        $files = glob($path . '/*.php') ?: [];
+        self::assertCount(1, $files);
+        try {
+            require $files[0];
+            $class = 'PortableReviewMigration\\' . basename($files[0], '.php');
+            $database = new \wpdb();
+            $database->prefix = 'tenant42_';
+            $migration = new $class($database);
+            self::assertStringContainsString('CREATE TABLE tenant42_sympress_mailer_logs', implode("\n", $migration->up()));
+            self::assertStringNotContainsString('CREATE TABLE wp_', implode("\n", $migration->up()));
+            self::assertStringContainsString('CREATE TABLE tenant42_portable_values', implode("\n", $migration->up()));
+            self::assertStringContainsString("DEFAULT 'wp_literal'", implode("\n", $migration->up()));
+            $database->prefix = 'invalid-prefix;';
+            $this->expectException(\InvalidArgumentException::class);
+            $migration->up();
+        } finally {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- disposable generated migration fixture.
+            unlink($files[0]);
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- disposable generated migration fixture.
+            rmdir($path);
+        }
+    }
+
+    public function testDiffRequiresItsOwnDestructiveFlagWhenTheServiceDefaultAllowsChanges(): void
+    {
+        $database = new class extends \wpdb {
+            public function get_results(string $query, string|int $output = ARRAY_A): array
+            {
+                return str_starts_with($query, 'DESCRIBE') ? [
+                    ['Field' => 'id', 'Type' => 'varchar(32)', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'created_at', 'Type' => 'datetime', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'status', 'Type' => 'varchar(40)', 'Null' => 'NO', 'Default' => null, 'Extra' => ''],
+                    ['Field' => 'payload', 'Type' => 'longtext', 'Null' => 'YES', 'Default' => null, 'Extra' => ''],
+                ] : [];
+            }
+        };
+        $database->countResult = 1;
+        $metadata = new MetadataFactory();
+        $tool = new SchemaTool($metadata, new EntityClassRegistry($metadata, classes: [NarrowEmailLog::class]), new SchemaSqlGenerator(), $database, allowDestructiveUpdates: true);
+        $path = sys_get_temp_dir() . '/orm-explicit-policy-' . bin2hex(random_bytes(4));
+        $tester = new CommandTester(new MigrationDiffCommand($tool));
+        self::assertSame(1, $tester->execute(['--path' => $path]));
+        self::assertStringContainsString('--destructive', $tester->getDisplay());
+        self::assertDirectoryDoesNotExist($path);
+        self::assertSame(0, $tester->execute(['--path' => $path, '--destructive' => true]));
+        $files = glob($path . '/*.php') ?: [];
+        try {
+            self::assertCount(1, $files);
+            self::assertStringContainsString('MODIFY COLUMN status varchar(10)', (string) file_get_contents($files[0]));
+        } finally {
+            foreach ($files as $file) {
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- disposable generated policy fixture.
+                unlink($file);
+            }
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- disposable generated policy fixture.
             rmdir($path);
         }
     }

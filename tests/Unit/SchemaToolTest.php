@@ -10,6 +10,7 @@ use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Schema\SchemaSqlGenerator;
 use SymPress\Orm\Schema\SchemaTool;
 use SymPress\Orm\Tests\Fixtures\EmailLog;
+use SymPress\Orm\Tests\Fixtures\NarrowEmailLog;
 use SymPress\Orm\Tests\Fixtures\NumericRole;
 use SymPress\Orm\Tests\Fixtures\NumericUser;
 
@@ -105,5 +106,15 @@ final class SchemaToolTest extends TestCase
                 return [];
             }
         };
+    }
+
+    public function testExplicitSafePreflightOverridesDestructiveServiceDefault(): void
+    {
+        $metadata = new MetadataFactory();
+        $database = $this->databaseWithLegacySchema();
+        $database->countResult = 1;
+        $tool = new SchemaTool($metadata, new EntityClassRegistry($metadata, classes: [NarrowEmailLog::class]), new SchemaSqlGenerator(), $database, allowDestructiveUpdates: true);
+        self::assertFalse($tool->requiresDestructiveUpdates(null, true));
+        self::assertTrue($tool->requiresDestructiveUpdates(null, false));
     }
 }

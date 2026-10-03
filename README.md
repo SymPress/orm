@@ -27,7 +27,9 @@ and registers its services and console commands automatically.
 
 The root project should also require `sympress/migration` when ORM-managed
 schema migrations should be registered and executed through the migration
-system.
+bridge. ORM 0.3.3 requires Migration 1.0.8 or newer when that optional package is
+installed; update both together for lock ownership, typed operational errors
+and the explicit `wp migration adopt --retire-superseded` upgrade workflow.
 
 ## Features
 

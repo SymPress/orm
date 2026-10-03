@@ -1,6 +1,8 @@
 parameters:
     orm.entity_paths: []
     orm.entity_classes: []
+    orm.allow_destructive_updates: false
+    orm.legacy_migration_keys: []
 
 services:
     _defaults:
@@ -49,6 +51,7 @@ services:
     SymPress\Orm\Schema\SchemaTool:
         arguments:
             $database: '@SymPress\Orm\Dbal\ConnectionInterface'
+            $allowDestructiveUpdates: '%orm.allow_destructive_updates%'
         public: true
 
     SymPress\Orm\Metadata\EntityClassRegistry:
@@ -61,3 +64,7 @@ services:
     SymPress\Orm\Bridge\Migration\OrmMigrationRegistrar:
         tags:
             - { name: kernel.hook, hook: 'db_migration_register', method: register, accepted_args: 1 }
+
+    SymPress\Orm\Bridge\Migration\SchemaMigrationFactory:
+        arguments:
+            $legacyMigrationKeys: '%orm.legacy_migration_keys%'

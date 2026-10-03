@@ -238,6 +238,16 @@ The package provides console commands for schema SQL and migration diffs:
 
 `--destructive` enables column modifications, replacement indexes and drop SQL for schema diffs when explicitly requested. Existing column/index definitions are preserved by default.
 
+The service parameter `orm.allow_destructive_updates` defaults to false and
+controls automatic bridge schema updates. Enable it only after reviewing data
+compatibility. The CLI still requires its own `--destructive` option when the
+service default is true. `requiresDestructiveUpdates($manager, false)` explicitly
+checks the safe policy independently of that default.
+Generated concrete migrations bind their leading table identifiers to the
+executing WordPress connection's validated prefix; column names and SQL literal
+values remain unchanged. A migration generated with `wp_` can therefore execute
+on `tenant42_` without copying the generation site's table names.
+
 Migration integration is implemented by:
 
 - `Bridge\Migration\OrmMigrationRegistrar`
@@ -270,18 +280,22 @@ diff becomes empty; changing entity metadata does produce a pending version.
 The bridge publishes an explicit stable `orm-schema:<manager>` migration key.
 It computes only intended-schema identity at creation. Its forward SQL and
 destructive-policy check refresh live schema state during execution. Use the
-Migration 1.0.4 or later WordPress executor with the deferred operation contract so this
+Migration 1.0.8 or later WordPress executor with the deferred operation contract so this
 inspection runs after the advisory lock is acquired; older/custom executors
 without that contract retain their existing operation semantics.
 
 For a deployment with applied anonymous records from the old bridge, provide
 their exact stored identities in `SchemaMigrationFactory`'s optional
-`$legacyMigrationKeys` constructor argument, keyed by manager name. The generated
-migration exposes those through `getLegacyMigrationKeys()`. Do not derive aliases
+`$legacyMigrationKeys` constructor argument, keyed by manager name, or the bundle
+parameter `orm.legacy_migration_keys` (default `[]`). The generated migration
+exposes those through `getLegacyMigrationKeys()`. Do not derive aliases
 from a basename, line number or schema hash. SymPress Migration refuses unmapped
 old anonymous state before execution; inspect the state with backups in place
 and configure the explicit mapping before deploying this identity transition.
 Versions and append-only history remain independent of that mapping.
+Different versions from multiple old releases require explicit review through
+Migration's adoption and `--retire-superseded` workflow; retain the reviewed
+canonical state and retire each superseded identity individually.
 
 Entity discovery is cached for the registry lifetime. Schema inspection results
 are cached separately by manager and destructive policy; call
@@ -303,14 +317,15 @@ and a disposable MariaDB database configured through `WORDPRESS_DB_*`.
 The database matrix also runs MySQL 8.4. Its upgrade fixture executes the immutable
 ORM 0.2.0 sources (`4ef5ec98a971e27c1180084ada76befbb8bf0b5a`) in a separate
 process to create the old schema, persist data and record the anonymous identity.
-It then adopts the exact recorded identity with Migration 1.0.7, applies the
+It then adopts the exact recorded identity with Migration 1.0.8, applies the
 current additive schema and verifies identical rows, stable current identity,
 retained legacy history and repeat-run idempotence. Set
 `SYMPRESS_ORM_LEGACY_SOURCE` to that source checkout for local database tests.
 Only disposable `sympress_review_*` databases are accepted. The runtime conflict
-with Migration below 1.0.4 stays stricter than the earlier 1.0.2 minimum because
-the deferred execution interface is needed; development upgrade tests require
-Migration 1.0.7 for its explicit adopt API.
+with Migration below 1.0.8 ensures the optional bridge uses verified advisory
+lock/session ownership, explicit additional-legacy retirement and typed
+`MigrationOperationException` failures. Development upgrade tests require the
+same version. Update Migration alongside ORM when adopting this release.
 The bootstrap requires an explicit `WORDPRESS_DB_NAME=sympress_review_*` value;
 it refuses general application databases. Required database CI fails skipped or
 incomplete tests and runs on pull requests, main and the weekly schedule.

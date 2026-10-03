@@ -48,7 +48,8 @@ final class MigrationDiffCommand extends Command
             return Command::FAILURE;
         }
 
-        if (!$input->getOption('destructive') && $this->schemaTool->requiresDestructiveUpdates($manager)) {
+        $this->schemaTool->refreshSchemaState();
+        if (!$input->getOption('destructive') && $this->schemaTool->requiresDestructiveUpdates($manager, false)) {
             $io->error('Schema changes require explicit --destructive intent or a reviewed inverse migration.');
 
             return Command::FAILURE;
@@ -99,7 +100,7 @@ final class MigrationDiffCommand extends Command
     private function migrationClass(string $namespace, string $className, array $up): string
     {
         return sprintf(
-            "<?php\n\n%s\n\nnamespace %s;\n\nuse SymPress\\WordPress\\Migration\\Domain\\AbstractMigration;\n\nfinal class %s extends AbstractMigration\n{\n    protected const string VERSION = '%s';\n\n    /** @return list<string> */\n    public function up(): array\n    {\n        return %s;\n    }\n\n    /** @return list<string> */\n    public function down(): array\n    {\n        throw new \RuntimeException('Generated ORM schema migrations are irreversible; supply an explicit reviewed inverse migration.');\n    }\n}\n",
+            "<?php\n\n%s\n\nnamespace %s;\n\nuse SymPress\\WordPress\\Migration\\Domain\\AbstractMigration;\n\nfinal class %s extends AbstractMigration\n{\n    protected const string VERSION = '%s';\n\n    /** @return list<string> */\n    public function up(): array\n    {\n        \$prefix = \$this->database->prefix;\n        if (preg_match('/^[A-Za-z0-9_]*$/D', \$prefix) !== 1) {\n            throw new \\InvalidArgumentException('WordPress table prefix must contain only SQL identifier characters.');\n        }\n        return %s;\n    }\n\n    /** @return list<string> */\n    public function down(): array\n    {\n        throw new \RuntimeException('Generated ORM schema migrations are irreversible; supply an explicit reviewed inverse migration.');\n    }\n}\n",
             'declare(strict_types=1);',
             $namespace,
             $className,
@@ -116,7 +117,13 @@ final class MigrationDiffCommand extends Command
         $lines = ['['];
 
         foreach ($statements as $statement) {
-            $lines[] = sprintf('%s%s,', $innerPadding, var_export($statement, true));
+            // Rebind only the generated leading table identifier; SQL values and column names remain literal.
+            $prefix = $this->schemaTool->getTablePrefix();
+            if (preg_match('/^(CREATE TABLE|ALTER TABLE|DROP TABLE(?: IF EXISTS)?) ([A-Za-z0-9_]+)(.*)$/sD', $statement, $match) !== 1 || !str_starts_with($match[2], $prefix)) {
+                throw new \RuntimeException('Generated schema SQL cannot be rebound to a portable table identifier.');
+            }
+            $expression = var_export($match[1] . ' ', true) . ' . $prefix . ' . var_export(substr($match[2], strlen($prefix)) . $match[3], true);
+            $lines[] = sprintf('%s%s,', $innerPadding, $expression);
         }
 
         $lines[] = $padding . ']';

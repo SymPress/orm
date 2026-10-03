@@ -6,6 +6,7 @@ namespace SymPress\Orm\Bridge\Migration;
 
 use SymPress\Orm\Schema\SchemaTool;
 use SymPress\WordPress\Migration\Contract\Migration;
+use SymPress\WordPress\Migration\Exception\MigrationOperationException;
 
 final readonly class SchemaMigrationFactory
 {
@@ -67,7 +68,7 @@ final readonly class SchemaMigrationFactory
                 $this->schemaTool->refreshSchemaState();
                 $up = $this->schemaTool->getUpdateSchemaSql($this->manager);
                 if ($this->schemaTool->requiresDestructiveUpdates($this->manager)) {
-                    throw new \RuntimeException('Schema changes require explicit destructive-update intent; the intended schema remains pending.');
+                    throw new MigrationOperationException('Schema changes require explicit destructive-update intent; the intended schema remains pending.');
                 }
 
                 return $up;
@@ -76,7 +77,7 @@ final readonly class SchemaMigrationFactory
             /** @return list<string> */
             public function down(): array
             {
-                throw new \RuntimeException('Generated ORM schema migrations are irreversible; supply an explicit reviewed inverse migration.');
+                throw new MigrationOperationException('Generated ORM schema migrations are irreversible; supply an explicit reviewed inverse migration.');
             }
         };
     }
