@@ -101,11 +101,17 @@ final class SchemaTool
         return $this->schemaChecks[$cacheKey] = $statements;
     }
 
-    public function requiresDestructiveUpdates(?string $manager = null): bool
+    public function requiresDestructiveUpdates(?string $manager = null, ?bool $allowDestructiveUpdates = null): bool
     {
-        $this->getUpdateSchemaSql($manager);
+        $destructive = $allowDestructiveUpdates ?? $this->allowDestructiveUpdates;
+        $this->getUpdateSchemaSql($manager, $destructive);
 
-        return $this->blockedSchemaChecks[($manager ?? '*') . ':' . (int) $this->allowDestructiveUpdates] ?? false;
+        return $this->blockedSchemaChecks[($manager ?? '*') . ':' . (int) $destructive] ?? false;
+    }
+
+    public function getTablePrefix(): string
+    {
+        return $this->prefix();
     }
 
     public function refreshSchemaState(): void
