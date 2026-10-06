@@ -21,6 +21,8 @@ use SymPress\Orm\Schema\SchemaTool;
 use SymPress\Orm\Tests\Fixtures\EmailLog;
 use SymPress\Orm\Tests\Fixtures\NumericRole;
 use SymPress\Orm\Tests\Fixtures\NarrowEmailLog;
+use SymPress\Orm\Tests\Fixtures\StringDefaults;
+use SymPress\Orm\Tests\Fixtures\StringDefaultsWithMemo;
 use SymPress\WordPress\Migration\Application\MigrationLifecycle;
 use SymPress\WordPress\Migration\Domain\MigrationCollection;
 use SymPress\WordPress\Migration\Domain\MigrationManager;
@@ -45,9 +47,31 @@ final class OrmDatabaseTest extends TestCase
 
     private function cleanup(): void
     {
-        foreach (['sympress_mailer_logs', 'sympress_numeric_roles', 'orm_review_state', 'orm_review_state_history'] as $name) {
+        foreach (['sympress_mailer_logs', 'sympress_numeric_roles', 'orm_review_state', 'orm_review_state_history', 'orm_string_defaults'] as $name) {
             $this->database->query($this->database->prepare('DROP TABLE IF EXISTS %i', $this->database->prefix . $name));
         }
+    }
+
+    public function testDecodedStringDefaultsPermitAdditiveMigrationsAndDetectActualChanges(): void
+    {
+        $metadata = new MetadataFactory();
+        $tool = new SchemaTool($metadata, new EntityClassRegistry($metadata, classes: [StringDefaults::class]), new SchemaSqlGenerator(), $this->database);
+        self::assertTrue(new WordPressSqlExecutor($this->database)->execute($tool->getCreateSchemaSql()));
+        self::assertSame([], $tool->getUpdateSchemaSql('default'));
+        self::assertFalse($tool->requiresDestructiveUpdates('default'));
+        $additive = new SchemaTool($metadata, new EntityClassRegistry($metadata, classes: [StringDefaultsWithMemo::class]), new SchemaSqlGenerator(), $this->database);
+        $sql = new SchemaMigrationFactory($additive)->create('default')->up();
+        self::assertCount(1, $sql);
+        self::assertStringContainsString('ADD COLUMN memo', $sql[0]);
+        self::assertTrue(new WordPressSqlExecutor($this->database)->execute($sql));
+        $additive->refreshSchemaState();
+        self::assertSame([], $additive->getUpdateSchemaSql('default'));
+
+        $this->database->query("ALTER TABLE wp_orm_string_defaults MODIFY status VARCHAR(40) NOT NULL DEFAULT 'pending'");
+        $additive->refreshSchemaState();
+        self::assertTrue($additive->requiresDestructiveUpdates('default'));
+        $this->expectException(\SymPress\WordPress\Migration\Exception\MigrationOperationException::class);
+        new SchemaMigrationFactory($additive)->create('default')->up();
     }
 
     public function testCompiledCatalogPersistsWithRealWpdbWithoutMappingReflection(): void
