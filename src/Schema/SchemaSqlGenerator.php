@@ -129,7 +129,7 @@ final readonly class SchemaSqlGenerator
         return sprintf('ALTER TABLE %s DROP INDEX %s;', $table, $index);
     }
 
-    public function columnDefinition(ColumnMetadata $column): string
+    public function columnDefinition(ColumnMetadata $column, bool $includeDefault = true): string
     {
         $definition = sprintf('%s %s', $column->columnName, $this->types->sqlType($column));
 
@@ -141,7 +141,7 @@ final readonly class SchemaSqlGenerator
             $definition .= ' NOT NULL';
         }
 
-        if ($column->default !== null) {
+        if ($includeDefault && $column->default !== null) {
             $definition .= ' DEFAULT ' . $this->defaultValue($column->default);
         }
 

@@ -405,7 +405,9 @@ final class SchemaTool
     /** @param array<string, mixed> $row */
     private function columnMatches(\SymPress\Orm\Metadata\ColumnMetadata $column, array $row): bool
     {
-        $expected = strtolower($this->sql->columnDefinition($column));
+        // SQL syntax and literal values are separate comparisons. DESCRIBE
+        // reports decoded defaults, not the quoted literal from CREATE TABLE.
+        $expected = $this->sql->columnDefinition($column, includeDefault: false);
         $actual = strtolower(trim(sprintf(
             '%s %s %s%s',
             $column->columnName,
@@ -414,11 +416,26 @@ final class SchemaTool
             str_contains(strtolower((string) ($row['Extra'] ?? '')), 'auto_increment') ? ' AUTO_INCREMENT' : '',
         )));
 
-        if ($column->default !== null) {
-            $actual .= ' default ' . strtolower((string) $row['Default']);
-        }
+        return $this->normalizeDefinition($expected) === $this->normalizeDefinition($actual)
+            && $this->defaultMatches($column->default, $row['Default'] ?? null);
+    }
 
-        return $this->normalizeDefinition($expected) === $this->normalizeDefinition($actual);
+    private function defaultMatches(mixed $expected, mixed $actual): bool
+    {
+        if ($expected === null || $actual === null) {
+            return $expected === $actual;
+        }
+        if ($expected === 'CURRENT_TIMESTAMP') {
+            return in_array(strtolower((string) $actual), ['current_timestamp', 'current_timestamp()'], true);
+        }
+        if (is_bool($expected)) {
+            return (string) $actual === ($expected ? '1' : '0');
+        }
+        if (is_int($expected) || is_float($expected)) {
+            return is_numeric($actual) && (float) $actual === (float) $expected;
+        }
+        // Preserve case, quotes, whitespace and empty strings in literal defaults.
+        return (string) $expected === (string) $actual;
     }
 
     /**
