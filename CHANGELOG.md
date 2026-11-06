@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.5 — 2026-11-06
+
+- Use the Symfony 8.1.11 security patches released on November 4.
+
 ## 0.3.4 — 2026-10-06
 
 - Compare MySQL string defaults as exact literal values instead of serialized SQL. Unchanged string defaults and additive nullable columns no longer require destructive-update permission.
