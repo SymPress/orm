@@ -77,7 +77,8 @@ if (!class_exists('wpdb')) {
         public function prepare(string $query, mixed ...$args): string
         {
             return vsprintf(str_replace(['%d', '%f'], '%s', $query), array_map(
-                static fn (mixed $value): string => "'" . str_replace("'", "''", (string) $value) . "'",
+                // Like wpdb::_real_escape(), non-scalar values (objects, null) silently become ''.
+                static fn (mixed $value): string => "'" . (is_scalar($value) ? str_replace("'", "''", (string) $value) : '') . "'",
                 $args,
             ));
         }

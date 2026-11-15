@@ -11,6 +11,7 @@ use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Tests\Fixtures\Course;
 use SymPress\Orm\Tests\Fixtures\EmailLog;
+use SymPress\Orm\Tests\Fixtures\MailStatus;
 use SymPress\Orm\Tests\Fixtures\Student;
 use SymPress\Orm\Tests\Fixtures\Tenant;
 use SymPress\Orm\Tests\Fixtures\TenantPost;
@@ -257,5 +258,68 @@ final class QueryBuilderTest extends TestCase
         self::assertStringContainsString("`e`.`status` IN ('queued', 'sent')", $database->queries[0]);
         $manager->getRepository(EmailLog::class)->findBy(['status' => []]);
         self::assertStringContainsString('IN (NULL)', $database->queries[1]);
+    }
+
+    public function testObjectParametersBindTheirDatabaseValue(): void
+    {
+        $metadata = new MetadataFactory();
+        $database = new class extends \wpdb {
+            public function get_results(string $query, string|int $output = ARRAY_A): array
+            {
+                $this->queries[] = $query;
+                return [];
+            }
+        };
+        $manager = new EntityManager($metadata, new EntityClassRegistry($metadata, classes: [EmailLog::class]), new EntityHydrator(), $database);
+        $now = new \DateTimeImmutable('2026-11-15 10:30:00');
+
+        $compiled = $manager->createQueryBuilder()->select('l')->from(EmailLog::class, 'l')
+            ->where('l.createdAt > :now AND l.status IN (:statuses)')
+            ->setParameter('now', $now)
+            ->setParameter('statuses', [MailStatus::Queued, 'sent'])
+            ->compile();
+        self::assertSame(['2026-11-15 10:30:00', 'queued', 'sent'], $compiled->parameters);
+
+        $query = $manager->createQuery('UPDATE EmailLog l SET l.status = :status WHERE l.createdAt < :now', ['status' => MailStatus::Queued, 'now' => $now]);
+        self::assertSame(
+            "UPDATE `wp_sympress_mailer_logs` `l` SET `l`.`status` = 'queued' WHERE `l`.`created_at` < '2026-11-15 10:30:00'",
+            $query->getSQL(),
+        );
+
+        $manager->getRepository(EmailLog::class)->findBy(['status' => MailStatus::Queued]);
+        self::assertStringContainsString("`e`.`status` = 'queued'", $database->queries[0]);
+    }
+
+    public function testNullParametersBindSqlNullInsteadOfEmptyString(): void
+    {
+        $metadata = new MetadataFactory();
+        $manager = new EntityManager($metadata, new EntityClassRegistry($metadata, classes: [EmailLog::class]), new EntityHydrator(), new \wpdb());
+
+        $compiled = $manager->createQueryBuilder()->select('l')->from(EmailLog::class, 'l')
+            ->where('l.status = :status AND l.id IN (:ids)')
+            ->setParameter('status', null)
+            ->setParameter('ids', ['a', null])
+            ->compile();
+        self::assertStringContainsString('`l`.`status` = NULL AND `l`.`id` IN (%s, NULL)', $compiled->sql);
+        self::assertSame(['a'], $compiled->parameters);
+
+        $query = $manager->createQuery('UPDATE EmailLog l SET l.payload = :payload WHERE l.id = :id', ['payload' => null, 'id' => 'log-1']);
+        self::assertSame("UPDATE `wp_sympress_mailer_logs` `l` SET `l`.`payload` = NULL WHERE `l`.`id` = 'log-1'", $query->getSQL());
+    }
+
+    public function testUnsupportedObjectParametersAreRejected(): void
+    {
+        $metadata = new MetadataFactory();
+        $manager = new EntityManager($metadata, new EntityClassRegistry($metadata, classes: [EmailLog::class]), new EntityHydrator(), new \wpdb());
+
+        try {
+            $manager->createQueryBuilder()->setParameter('value', new \stdClass());
+            self::fail('Expected unsupported parameter to be rejected.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertStringContainsString('stdClass', $exception->getMessage());
+        }
+
+        $this->expectException(\InvalidArgumentException::class);
+        $manager->createQuery('DELETE FROM EmailLog l WHERE l.id = :id', ['id' => new \stdClass()]);
     }
 }

@@ -99,6 +99,8 @@ Supported DQL is a focused subset:
 - `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`
 - named and positional parameters
 - array parameters for `IN (...)`
+- object parameters: entities bind their identifier, `BackedEnum` its value, `DateTimeInterface` `Y-m-d H:i:s` (format date-only comparisons yourself); other objects throw `InvalidArgumentException`
+- `null` parameters bind SQL `NULL`, so `= :value` with `null` matches no row; use `IS NULL`
 - custom DQL functions through `EntityManager::registerDqlFunction()`
 - output walkers through `EntityManager::addOutputWalker()`
 
