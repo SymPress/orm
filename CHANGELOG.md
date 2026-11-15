@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.6 — 2026-11-15
+
+- Security: bind `DateTimeInterface` (`Y-m-d H:i:s`) and `BackedEnum` query parameters by their database value. `wpdb` turned them into `''`, so `t.expiresAt > :now` matched every row and enum filters matched nothing. Other non-entity objects now throw `InvalidArgumentException`.
+- Bind `null` query parameters as SQL `NULL` instead of `''`; `= :value` with `null` matches no row, use `IS NULL`.
+- Fail when `wpdb::prepare()` returns `''` because placeholders and arguments do not match, instead of silently running an empty statement.
+
 ## 0.3.5 — 2026-11-06
 
 - Use the Symfony 8.1.11 security patches released on November 4.
