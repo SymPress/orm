@@ -158,7 +158,7 @@ final class QueryBuilder
 
     public function setParameter(string|int $name, mixed $value): self
     {
-        $this->parameters[ltrim((string) $name, ':?')] = $this->normalizeParameter($value);
+        $this->parameters[ltrim((string) $name, ':?')] = DqlCompiler::normalizeParameter($value, $this->entityManager);
 
         return $this;
     }
@@ -518,24 +518,19 @@ final class QueryBuilder
                         return 'NULL';
                     }
 
+                    $placeholders = [];
+
                     foreach ($value as $item) {
-                        $parameters[] = $item;
+                        $placeholders[] = DqlCompiler::bindParameter($item, $this->entityManager, $parameters);
                     }
 
-                    return implode(', ', array_map(fn (mixed $item): string => $this->placeholder($item), $value));
+                    return implode(', ', $placeholders);
                 }
 
-                $parameters[] = $value;
-
-                return $this->placeholder($value);
+                return DqlCompiler::bindParameter($value, $this->entityManager, $parameters);
             },
             $expression,
         ) ?? '';
-    }
-
-    private function placeholder(mixed $value): string
-    {
-        return $this->entityManager->parameterPlaceholder($value);
     }
 
     private function orderByClause(string $sort, string $order): string
@@ -584,23 +579,6 @@ final class QueryBuilder
         }
 
         throw new \InvalidArgumentException(sprintf('Unknown field "%s" on "%s".', $property, $metadata->className));
-    }
-
-    private function normalizeParameter(mixed $value): mixed
-    {
-        if (is_array($value)) {
-            return array_map(fn (mixed $item): mixed => $this->normalizeParameter($item), $value);
-        }
-
-        if (!is_object($value)) {
-            return $value;
-        }
-
-        try {
-            return $this->entityManager->getIdentifierValue($value);
-        } catch (\Throwable) {
-            return $value;
-        }
     }
 
     private function returnsRootEntity(): bool

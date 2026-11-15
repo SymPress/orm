@@ -19,6 +19,7 @@ use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Schema\SchemaSqlGenerator;
 use SymPress\Orm\Schema\SchemaTool;
 use SymPress\Orm\Tests\Fixtures\EmailLog;
+use SymPress\Orm\Tests\Fixtures\MailStatus;
 use SymPress\Orm\Tests\Fixtures\NumericRole;
 use SymPress\Orm\Tests\Fixtures\NarrowEmailLog;
 use SymPress\Orm\Tests\Fixtures\StringDefaults;
@@ -100,6 +101,9 @@ final class OrmDatabaseTest extends TestCase
         self::assertSame('1', $this->database->get_var('SELECT COUNT(*) FROM wp_sympress_mailer_logs'));
         $manager->clear();
         self::assertCount(1, $manager->getRepository(EmailLog::class)->findBy(['status' => 'queued']));
+        self::assertCount(1, $manager->getRepository(EmailLog::class)->findBy(['status' => MailStatus::Queued]));
+        $future = $manager->createQueryBuilder()->select('e')->from(EmailLog::class, 'e')->where('e.createdAt > :now');
+        self::assertSame([], $future->setParameter('now', new \DateTimeImmutable('+1 day'))->getQuery()->getResult());
         self::assertSame([], $metadata->mappingResources());
     }
 

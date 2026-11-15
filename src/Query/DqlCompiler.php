@@ -298,19 +298,16 @@ final readonly class DqlCompiler
                         return 'NULL';
                     }
 
+                    $placeholders = [];
+
                     foreach ($value as $item) {
-                        $values[] = $item;
+                        $placeholders[] = self::bindParameter($item, $entityManager, $values);
                     }
 
-                    return implode(', ', array_map(
-                        static fn (mixed $item): string => $entityManager->parameterPlaceholder($item),
-                        $value,
-                    ));
+                    return implode(', ', $placeholders);
                 }
 
-                $values[] = $value;
-
-                return $entityManager->parameterPlaceholder($value);
+                return self::bindParameter($value, $entityManager, $values);
             },
             $expression,
         ) ?? '';
@@ -331,7 +328,10 @@ final readonly class DqlCompiler
         return $normalized;
     }
 
-    private static function normalizeParameter(mixed $value, EntityManager $entityManager): mixed
+    /**
+     * Converts a query parameter to the value bound by wpdb, which turns any non-scalar into ''.
+     */
+    public static function normalizeParameter(mixed $value, EntityManager $entityManager): mixed
     {
         if (is_array($value)) {
             return array_map(static fn (mixed $item): mixed => self::normalizeParameter($item, $entityManager), $value);
@@ -341,10 +341,37 @@ final readonly class DqlCompiler
             return $value;
         }
 
-        try {
-            return $entityManager->getIdentifierValue($value);
-        } catch (\Throwable) {
-            return $value;
+        if ($value instanceof \BackedEnum) {
+            return $value->value;
         }
+
+        // Same format EntityHydrator::toDatabase() persists for datetime columns.
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d H:i:s');
+        }
+
+        try {
+            $identifier = $entityManager->getIdentifierValue($value);
+        } catch (\Throwable $exception) {
+            throw new \InvalidArgumentException(sprintf(
+                'Unsupported query parameter of type "%s"; use a scalar, null, array, BackedEnum, DateTimeInterface or mapped entity.',
+                $value::class,
+            ), 0, $exception);
+        }
+
+        return self::normalizeParameter($identifier, $entityManager);
+    }
+
+    /** @param list<mixed> $values */
+    public static function bindParameter(mixed $value, EntityManager $entityManager, array &$values): string
+    {
+        // wpdb cannot bind NULL, so it is inlined; "= NULL" then matches no row, as in SQL and Doctrine.
+        if ($value === null) {
+            return 'NULL';
+        }
+
+        $values[] = $value;
+
+        return $entityManager->parameterPlaceholder($value);
     }
 }
