@@ -48,7 +48,8 @@ final class WpdbConnection implements ConnectionInterface
         // @phpstan-ignore argument.type
         $prepared = $this->database()->prepare($sql, ...$parameters);
 
-        if (!is_string($prepared)) {
+        // wpdb returns '' instead of failing when placeholders and arguments do not match.
+        if (!is_string($prepared) || $prepared === '') {
             throw new \RuntimeException('Unable to prepare SQL statement.');
         }
 

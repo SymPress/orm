@@ -136,4 +136,18 @@ final class DbalTest extends TestCase
         $connection->rollBack();
         self::assertSame(['START TRANSACTION', 'COMMIT', 'ROLLBACK'], $database->queries);
     }
+
+    public function testWpdbConnectionRejectsEmptyPreparedStatement(): void
+    {
+        // wpdb::prepare() returns '' when there are fewer arguments than placeholders.
+        $database = new class extends \wpdb {
+            public function prepare(string $query, mixed ...$args): string
+            {
+                return '';
+            }
+        };
+
+        $this->expectException(\RuntimeException::class);
+        (new WpdbConnection($database))->prepare('SELECT %s, %s', 'one');
+    }
 }
