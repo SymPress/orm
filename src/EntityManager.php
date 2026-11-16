@@ -189,6 +189,8 @@ final class EntityManager
             $this->scheduleOrphanRemovals();
             $scheduledUpdates = $this->unitOfWork->scheduledUpdates($this->hydrator, $this);
             $newEntityIds = [];
+            /** @var list<array{ClassMetadata, array<string, mixed>, bool}> $cacheChanges entity data and whether to store it */
+            $cacheChanges = [];
 
             foreach ($this->unitOfWork->scheduledInsertions() as $entity) {
                 $newEntityIds[spl_object_id($entity)] = true;
@@ -198,7 +200,7 @@ final class EntityManager
                 $metadata = $this->getClassMetadata($entity::class);
                 $data = $this->insertEntity($entity, $metadata);
                 $this->unitOfWork->markFlushed($entity, $metadata, $data);
-                $this->cacheEntity($metadata, $data);
+                $cacheChanges[] = [$metadata, $data, true];
                 $this->bumpAssociationRegionsFor($metadata);
                 $this->dispatchLifecycleEvent(Events::POST_PERSIST, $entity, $metadata);
             }
@@ -211,7 +213,7 @@ final class EntityManager
                     $update['metadata'],
                     $this->hydrator->extract($update['entity'], $update['metadata'], $this),
                 );
-                $this->cacheEntity($update['metadata'], $this->hydrator->extract($update['entity'], $update['metadata'], $this));
+                $cacheChanges[] = [$update['metadata'], $this->hydrator->extract($update['entity'], $update['metadata'], $this), true];
                 $this->bumpAssociationRegionsFor($update['metadata']);
                 $this->dispatchLifecycleEvent(Events::POST_UPDATE, $update['entity'], $update['metadata'], $update['changes']);
             }
@@ -238,7 +240,7 @@ final class EntityManager
             foreach ($scheduledDeletions as $entity) {
                 $metadata = $this->getClassMetadata($entity::class);
                 $this->deleteOwningManyToManyRows($entity, $metadata);
-                $this->evictEntity($metadata, $this->identifierWhere($entity, $metadata));
+                $cacheChanges[] = [$metadata, $this->identifierWhere($entity, $metadata), false];
                 $this->deleteEntity($entity, $metadata);
                 $this->bumpAssociationRegionsFor($metadata);
                 $this->unitOfWork->markRemoved($entity);
@@ -260,6 +262,30 @@ final class EntityManager
             $this->closed = true;
 
             throw $throwable;
+        }
+
+        $this->applyCacheChanges($cacheChanges, $startedTransaction);
+    }
+
+    /**
+     * Runs only after a successful flush so a rollback never leaves uncommitted rows in the cache.
+     *
+     * @param list<array{ClassMetadata, array<string, mixed>, bool}> $changes
+     */
+    private function applyCacheChanges(array $changes, bool $committed): void
+    {
+        foreach ($changes as [$metadata, $data, $store]) {
+            // shortcut: inside a caller's transaction entries are only evicted, since it may still roll back;
+            // track transaction depth if a persistent cache must also be warmed after that commit.
+            if ($store && $committed) {
+                $this->cacheEntity($metadata, $data);
+                continue;
+            }
+
+            $identifier = $this->identifierFromData($metadata, $data);
+            if ($identifier !== null) {
+                $this->evictEntity($metadata, $identifier);
+            }
         }
     }
 

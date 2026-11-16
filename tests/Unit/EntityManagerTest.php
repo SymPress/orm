@@ -299,6 +299,42 @@ final class EntityManagerTest extends TestCase
         self::assertNotSame($first, $third);
     }
 
+    public function testSecondLevelCacheIsWrittenOnlyAfterCommit(): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [CachedAuthor::class]);
+        $database = new class extends \wpdb {
+            public bool $failSecondInsert = true;
+            private int $insertCalls = 0;
+
+            /** @param array<string, mixed> $data */
+            public function insert(string $table, array $data): bool|int
+            {
+                return $this->failSecondInsert && ++$this->insertCalls === 2 ? false : parent::insert($table, $data);
+            }
+        };
+        $cache = new ArrayCache();
+        $failing = new EntityManager($metadataFactory, $registry, new EntityHydrator(), $database, secondLevelCache: $cache);
+        $failing->persist(new CachedAuthor('author-1', 'Ada'));
+        $failing->persist(new CachedAuthor('author-2', 'Grace'));
+
+        try {
+            $failing->flush();
+            self::fail('Expected the second insert to fail.');
+        } catch (\RuntimeException) {
+        }
+
+        $database->failSecondInsert = false;
+        $database->resultRows = [];
+        $reader = new EntityManager($metadataFactory, $registry, new EntityHydrator(), $database, secondLevelCache: $cache);
+        self::assertNull($reader->find(CachedAuthor::class, 'author-1'), 'A rolled-back insert must not be served from the cache.');
+
+        $reader->persist(new CachedAuthor('author-3', 'Hedy'));
+        $reader->flush();
+        $reader->clear();
+        self::assertSame('Hedy', $reader->find(CachedAuthor::class, 'author-3')?->name);
+    }
+
     public function testAssociationCacheIsInvalidatedAfterTargetWrite(): void
     {
         $metadataFactory = new MetadataFactory();
