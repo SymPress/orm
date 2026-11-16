@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.7 — 2026-11-16
+
+- Write second-level cache entries only after the flush transaction commits; a rollback no longer leaves uncommitted rows in the cache. Inside a caller's transaction, affected entries are evicted instead of written.
+- Reject table, column, index and join column names that are not plain SQL identifiers when metadata is built, and quote all identifiers in generated DDL. The quoted DDL changes the schema hash once: the migration bridge reports one pending ORM schema migration, which plans no SQL for an unchanged schema.
+- Escape backslashes in string column defaults; `'C:\temp\'` no longer breaks the generated DDL.
+- Reject column types that are neither known nor plain MySQL type names instead of copying them into the DDL.
+- Pin the shared `sympress/workflows` CI workflows to v1.3.2.
+
 ## 0.3.6 — 2026-11-15
 
 - Security: bind `DateTimeInterface` (`Y-m-d H:i:s`) and `BackedEnum` query parameters by their database value. `wpdb` turned them into `''`, so `t.expiresAt > :now` matched every row and enum filters matched nothing. Other non-entity objects now throw `InvalidArgumentException`.
