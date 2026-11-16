@@ -119,10 +119,10 @@ final class MigrationDiffCommand extends Command
         foreach ($statements as $statement) {
             // Rebind only the generated leading table identifier; SQL values and column names remain literal.
             $prefix = $this->schemaTool->getTablePrefix();
-            if (preg_match('/^(CREATE TABLE|ALTER TABLE|DROP TABLE(?: IF EXISTS)?) ([A-Za-z0-9_]+)(.*)$/sD', $statement, $match) !== 1 || !str_starts_with($match[2], $prefix)) {
+            if (preg_match('/^(CREATE TABLE|ALTER TABLE|DROP TABLE(?: IF EXISTS)?) `([A-Za-z0-9_]+)`(.*)$/sD', $statement, $match) !== 1 || !str_starts_with($match[2], $prefix)) {
                 throw new \RuntimeException('Generated schema SQL cannot be rebound to a portable table identifier.');
             }
-            $expression = var_export($match[1] . ' ', true) . ' . $prefix . ' . var_export(substr($match[2], strlen($prefix)) . $match[3], true);
+            $expression = var_export($match[1] . ' `', true) . ' . $prefix . ' . var_export(substr($match[2], strlen($prefix)) . '`' . $match[3], true);
             $lines[] = sprintf('%s%s,', $innerPadding, $expression);
         }
 

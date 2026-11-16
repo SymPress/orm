@@ -63,7 +63,7 @@ final class OrmDatabaseTest extends TestCase
         $additive = new SchemaTool($metadata, new EntityClassRegistry($metadata, classes: [StringDefaultsWithMemo::class]), new SchemaSqlGenerator(), $this->database);
         $sql = new SchemaMigrationFactory($additive)->create('default')->up();
         self::assertCount(1, $sql);
-        self::assertStringContainsString('ADD COLUMN memo', $sql[0]);
+        self::assertStringContainsString('ADD COLUMN `memo`', $sql[0]);
         self::assertTrue(new WordPressSqlExecutor($this->database)->execute($sql));
         $additive->refreshSchemaState();
         self::assertSame([], $additive->getUpdateSchemaSql('default'));

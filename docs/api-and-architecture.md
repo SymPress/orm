@@ -195,7 +195,7 @@ The ORM keeps these invariants:
 
 - All SQL uses the WordPress table prefix from `wpdb`.
 - Dynamic values go through `wpdb::prepare()` placeholders.
-- Identifiers are quoted by `WordPressSqlPlatform`.
+- Mapped identifiers are validated when metadata is built and quoted by `WordPressSqlPlatform` in DML and DDL.
 - Repository fields and `ORDER BY` paths are validated against metadata.
 - Schema SQL uses WordPress/MySQL table syntax and `wpdb::get_charset_collate()`.
 - Transactions are emitted as SQL statements through `wpdb::query()`.

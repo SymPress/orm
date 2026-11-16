@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace SymPress\Orm\Schema;
 
+use SymPress\Orm\Dbal\SqlPlatformInterface;
+use SymPress\Orm\Dbal\WordPressSqlPlatform;
 use SymPress\Orm\Metadata\ClassMetadata;
 use SymPress\Orm\Metadata\ColumnMetadata;
 use SymPress\Orm\Metadata\IndexMetadata;
@@ -12,8 +14,10 @@ use SymPress\Orm\Metadata\JoinTableMetadata;
 
 final readonly class SchemaSqlGenerator
 {
-    public function __construct(private SqlTypeMapper $types = new SqlTypeMapper())
-    {
+    public function __construct(
+        private SqlTypeMapper $types = new SqlTypeMapper(),
+        private SqlPlatformInterface $platform = new WordPressSqlPlatform(),
+    ) {
     }
 
     public function createTableSql(ClassMetadata $metadata, string $prefix = '', string $charsetCollate = ''): string
@@ -33,7 +37,7 @@ final readonly class SchemaSqlGenerator
         ));
 
         if ($primaryColumns !== []) {
-            $lines[] = sprintf('    PRIMARY KEY  (%s)', implode(', ', $primaryColumns));
+            $lines[] = sprintf('    PRIMARY KEY  (%s)', $this->identifierList($primaryColumns));
         }
 
         foreach ($metadata->indexes as $index) {
@@ -44,7 +48,7 @@ final readonly class SchemaSqlGenerator
 
         return sprintf(
             "CREATE TABLE %s (\n%s\n) %s;",
-            $metadata->tableName($prefix),
+            $this->identifier($metadata->tableName($prefix)),
             implode(",\n", $lines),
             $suffix,
         );
@@ -52,7 +56,7 @@ final readonly class SchemaSqlGenerator
 
     public function dropTableSql(ClassMetadata $metadata, string $prefix = ''): string
     {
-        return sprintf('DROP TABLE IF EXISTS %s;', $metadata->tableName($prefix));
+        return sprintf('DROP TABLE IF EXISTS %s;', $this->identifier($metadata->tableName($prefix)));
     }
 
     public function createJoinTableSql(
@@ -79,7 +83,7 @@ final readonly class SchemaSqlGenerator
         ]);
 
         if ($primaryColumns !== []) {
-            $columns[] = sprintf('    PRIMARY KEY  (%s)', implode(', ', $primaryColumns));
+            $columns[] = sprintf('    PRIMARY KEY  (%s)', $this->identifierList($primaryColumns));
         }
 
         $table = $prefix !== '' && !str_starts_with($joinTable->name, $prefix)
@@ -89,7 +93,7 @@ final readonly class SchemaSqlGenerator
 
         return sprintf(
             "CREATE TABLE %s (\n%s\n) %s;",
-            $table,
+            $this->identifier($table),
             implode(",\n", $columns),
             $suffix,
         );
@@ -101,37 +105,37 @@ final readonly class SchemaSqlGenerator
             ? $prefix . $joinTable->name
             : $joinTable->name;
 
-        return sprintf('DROP TABLE IF EXISTS %s;', $table);
+        return sprintf('DROP TABLE IF EXISTS %s;', $this->identifier($table));
     }
 
     public function addColumnSql(string $table, ColumnMetadata $column): string
     {
-        return sprintf('ALTER TABLE %s ADD COLUMN %s;', $table, $this->columnDefinition($column));
+        return sprintf('ALTER TABLE %s ADD COLUMN %s;', $this->identifier($table), $this->columnDefinition($column));
     }
 
     public function modifyColumnSql(string $table, ColumnMetadata $column): string
     {
-        return sprintf('ALTER TABLE %s MODIFY COLUMN %s;', $table, $this->columnDefinition($column));
+        return sprintf('ALTER TABLE %s MODIFY COLUMN %s;', $this->identifier($table), $this->columnDefinition($column));
     }
 
     public function dropColumnSql(string $table, string $column): string
     {
-        return sprintf('ALTER TABLE %s DROP COLUMN %s;', $table, $column);
+        return sprintf('ALTER TABLE %s DROP COLUMN %s;', $this->identifier($table), $this->identifier($column));
     }
 
     public function addIndexSql(string $table, IndexMetadata $index): string
     {
-        return sprintf('ALTER TABLE %s ADD %s;', $table, $this->indexDefinition($index));
+        return sprintf('ALTER TABLE %s ADD %s;', $this->identifier($table), $this->indexDefinition($index));
     }
 
     public function dropIndexSql(string $table, string $index): string
     {
-        return sprintf('ALTER TABLE %s DROP INDEX %s;', $table, $index);
+        return sprintf('ALTER TABLE %s DROP INDEX %s;', $this->identifier($table), $this->identifier($index));
     }
 
     public function columnDefinition(ColumnMetadata $column, bool $includeDefault = true): string
     {
-        $definition = sprintf('%s %s', $column->columnName, $this->types->sqlType($column));
+        $definition = sprintf('%s %s', $this->identifier($column->columnName), $this->types->sqlType($column));
 
         if ($column->generated) {
             $definition .= ' NOT NULL AUTO_INCREMENT';
@@ -155,8 +159,8 @@ final readonly class SchemaSqlGenerator
         return sprintf(
             '%s %s (%s)',
             $keyword,
-            $index->name,
-            implode(', ', $index->columns),
+            $this->identifier($index->name),
+            $this->identifierList($index->columns),
         );
     }
 
@@ -178,6 +182,17 @@ final readonly class SchemaSqlGenerator
         return "'" . str_replace(['\\', "'"], ['\\\\', "''"], (string) $default) . "'";
     }
 
+    private function identifier(string $name): string
+    {
+        return $this->platform->quoteIdentifier($name);
+    }
+
+    /** @param list<string> $names */
+    private function identifierList(array $names): string
+    {
+        return implode(', ', array_map($this->identifier(...), $names));
+    }
+
     private function joinColumnDefinition(JoinColumnMetadata $joinColumn, ?ClassMetadata $referencedMetadata): string
     {
         $referencedColumn = $referencedMetadata?->columnForName($joinColumn->referencedColumnName)
@@ -186,7 +201,7 @@ final readonly class SchemaSqlGenerator
         if (!$referencedColumn instanceof ColumnMetadata) {
             return sprintf(
                 '%s varchar(191) %s',
-                $joinColumn->name,
+                $this->identifier($joinColumn->name),
                 $joinColumn->nullable ? 'NULL' : 'NOT NULL',
             );
         }

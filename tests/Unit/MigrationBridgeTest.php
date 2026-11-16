@@ -91,10 +91,10 @@ final class MigrationBridgeTest extends TestCase
         $migration = (new SchemaMigrationFactory($tool))->create('default');
         $version = $migration->getVersion();
         $database->statusLength = 20;
-        self::assertStringContainsString('MODIFY COLUMN status varchar(10)', implode("\n", $migration->up()));
+        self::assertStringContainsString('MODIFY COLUMN `status` varchar(10)', implode("\n", $migration->up()));
         self::assertSame($version, $migration->getVersion());
         $database->statusLength = 10;
-        self::assertStringNotContainsString('MODIFY COLUMN status', implode("\n", $migration->up()));
+        self::assertStringNotContainsString('MODIFY COLUMN `status`', implode("\n", $migration->up()));
     }
 
     public function testGeneratedCommandUsesIrreversibleRollbackAndRejectsNamespaceInjection(): void
@@ -135,9 +135,9 @@ final class MigrationBridgeTest extends TestCase
             $database = new \wpdb();
             $database->prefix = 'tenant42_';
             $migration = new $class($database);
-            self::assertStringContainsString('CREATE TABLE tenant42_sympress_mailer_logs', implode("\n", $migration->up()));
-            self::assertStringNotContainsString('CREATE TABLE wp_', implode("\n", $migration->up()));
-            self::assertStringContainsString('CREATE TABLE tenant42_portable_values', implode("\n", $migration->up()));
+            self::assertStringContainsString('CREATE TABLE `tenant42_sympress_mailer_logs`', implode("\n", $migration->up()));
+            self::assertStringNotContainsString('CREATE TABLE `wp_', implode("\n", $migration->up()));
+            self::assertStringContainsString('CREATE TABLE `tenant42_portable_values`', implode("\n", $migration->up()));
             self::assertStringContainsString("DEFAULT 'wp_literal'", implode("\n", $migration->up()));
             $database->prefix = 'invalid-prefix;';
             $this->expectException(\InvalidArgumentException::class);
@@ -175,7 +175,7 @@ final class MigrationBridgeTest extends TestCase
         $files = glob($path . '/*.php') ?: [];
         try {
             self::assertCount(1, $files);
-            self::assertStringContainsString('MODIFY COLUMN status varchar(10)', (string) file_get_contents($files[0]));
+            self::assertStringContainsString('MODIFY COLUMN `status` varchar(10)', (string) file_get_contents($files[0]));
         } finally {
             foreach ($files as $file) {
                 // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- disposable generated policy fixture.

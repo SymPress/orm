@@ -25,12 +25,12 @@ final class SchemaToolTest extends TestCase
 
         $sql = $tool->getUpdateSchemaSql()[0] ?? '';
 
-        self::assertStringContainsString('CREATE TABLE wp_sympress_mailer_logs', $sql);
-        self::assertStringContainsString('id varchar(32) NOT NULL', $sql);
-        self::assertStringContainsString('created_at datetime NOT NULL', $sql);
-        self::assertStringContainsString('payload longtext NULL', $sql);
-        self::assertStringContainsString('PRIMARY KEY  (id)', $sql);
-        self::assertStringContainsString('KEY status_created (status, created_at)', $sql);
+        self::assertStringContainsString('CREATE TABLE `wp_sympress_mailer_logs`', $sql);
+        self::assertStringContainsString('`id` varchar(32) NOT NULL', $sql);
+        self::assertStringContainsString('`created_at` datetime NOT NULL', $sql);
+        self::assertStringContainsString('`payload` longtext NULL', $sql);
+        self::assertStringContainsString('PRIMARY KEY  (`id`)', $sql);
+        self::assertStringContainsString('KEY `status_created` (`status`, `created_at`)', $sql);
     }
 
     public function testDdlEscapesBackslashesInDefaultsAndRejectsUnsafeTypes(): void
@@ -38,10 +38,10 @@ final class SchemaToolTest extends TestCase
         $sql = new SchemaSqlGenerator();
 
         self::assertSame(
-            "path varchar(20) NOT NULL DEFAULT 'C:\\\\it''s'",
+            "`path` varchar(20) NOT NULL DEFAULT 'C:\\\\it''s'",
             $sql->columnDefinition(new ColumnMetadata('path', 'path', 'string', 20, default: "C:\\it's")),
         );
-        self::assertSame('code char(2) NOT NULL', $sql->columnDefinition(new ColumnMetadata('code', 'code', 'char(2)')));
+        self::assertSame('`code` char(2) NOT NULL', $sql->columnDefinition(new ColumnMetadata('code', 'code', 'char(2)')));
 
         foreach (["varchar(10) DEFAULT ''", 'int; DROP TABLE wp_users'] as $type) {
             try {
@@ -53,6 +53,12 @@ final class SchemaToolTest extends TestCase
         }
     }
 
+    public function testDdlRejectsIdentifiersThatAreNotPlainSqlIdentifiers(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        (new SchemaSqlGenerator())->dropColumnSql('wp_sympress_mailer_logs', 'legacy`; DROP TABLE wp_users; --');
+    }
+
     public function testJoinTablesUseReferencedColumnTypes(): void
     {
         $metadataFactory = new MetadataFactory();
@@ -61,9 +67,9 @@ final class SchemaToolTest extends TestCase
 
         $sql = implode("\n\n", $tool->getCreateSchemaSql());
 
-        self::assertStringContainsString('CREATE TABLE wp_sympress_numeric_user_roles', $sql);
-        self::assertStringContainsString('user_id bigint unsigned NOT NULL', $sql);
-        self::assertStringContainsString('role_id bigint unsigned NOT NULL', $sql);
+        self::assertStringContainsString('CREATE TABLE `wp_sympress_numeric_user_roles`', $sql);
+        self::assertStringContainsString('`user_id` bigint unsigned NOT NULL', $sql);
+        self::assertStringContainsString('`role_id` bigint unsigned NOT NULL', $sql);
     }
 
     public function testUpdateSchemaSqlIsNonDestructiveByDefault(): void
@@ -77,10 +83,10 @@ final class SchemaToolTest extends TestCase
         $safeSql = implode("\n", $tool->getUpdateSchemaSql());
         $destructiveSql = implode("\n", $tool->getUpdateSchemaSql(null, true));
 
-        self::assertStringNotContainsString('DROP COLUMN legacy', $safeSql);
-        self::assertStringNotContainsString('DROP INDEX legacy_idx', $safeSql);
-        self::assertStringContainsString('DROP COLUMN legacy', $destructiveSql);
-        self::assertStringContainsString('DROP INDEX legacy_idx', $destructiveSql);
+        self::assertStringNotContainsString('DROP COLUMN `legacy`', $safeSql);
+        self::assertStringNotContainsString('DROP INDEX `legacy_idx`', $safeSql);
+        self::assertStringContainsString('DROP COLUMN `legacy`', $destructiveSql);
+        self::assertStringContainsString('DROP INDEX `legacy_idx`', $destructiveSql);
     }
 
     public function testConstructorDestructiveFlagControlsSchemaDiff(): void
@@ -99,8 +105,8 @@ final class SchemaToolTest extends TestCase
 
         $sql = implode("\n", $tool->getUpdateSchemaSql());
 
-        self::assertStringContainsString('DROP COLUMN legacy', $sql);
-        self::assertStringContainsString('DROP INDEX legacy_idx', $sql);
+        self::assertStringContainsString('DROP COLUMN `legacy`', $sql);
+        self::assertStringContainsString('DROP INDEX `legacy_idx`', $sql);
     }
 
     private function databaseWithLegacySchema(): \wpdb

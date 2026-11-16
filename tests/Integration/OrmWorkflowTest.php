@@ -56,8 +56,8 @@ final class OrmWorkflowTest extends TestCase
 
         $schemaSql = implode("\n\n", $schemaTool->getCreateSchemaSql());
 
-        self::assertStringContainsString('CREATE TABLE wp_sympress_students', $schemaSql);
-        self::assertStringContainsString('CREATE TABLE wp_sympress_student_courses', $schemaSql);
+        self::assertStringContainsString('CREATE TABLE `wp_sympress_students`', $schemaSql);
+        self::assertStringContainsString('CREATE TABLE `wp_sympress_student_courses`', $schemaSql);
 
         $database->resultRows = [
             ['id' => 'student-1', 'name' => 'Grace'],
