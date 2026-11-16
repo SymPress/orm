@@ -363,7 +363,7 @@ final class SchemaTool
     {
         $columns = [];
 
-        foreach ($this->connection?->fetchAllAssociative(sprintf('DESCRIBE %s', $table)) ?? [] as $row) {
+        foreach ($this->connection?->fetchAllAssociative(sprintf('DESCRIBE %s', $this->connection->platform()->quoteIdentifier($table))) ?? [] as $row) {
             if (is_string($row['Field'] ?? null)) {
                 $columns[$row['Field']] = $row;
             }
@@ -379,7 +379,7 @@ final class SchemaTool
     {
         $indexes = [];
 
-        foreach ($this->connection?->fetchAllAssociative(sprintf('SHOW INDEX FROM %s', $table)) ?? [] as $row) {
+        foreach ($this->connection?->fetchAllAssociative(sprintf('SHOW INDEX FROM %s', $this->connection->platform()->quoteIdentifier($table))) ?? [] as $row) {
             $name = $row['Key_name'] ?? null;
             $column = $row['Column_name'] ?? null;
 
@@ -409,7 +409,7 @@ final class SchemaTool
         // reports decoded defaults, not the quoted literal from CREATE TABLE.
         $expected = $this->sql->columnDefinition($column, includeDefault: false);
         $actual = strtolower(trim(sprintf(
-            '%s %s %s%s',
+            '`%s` %s %s%s',
             $column->columnName,
             (string) ($row['Type'] ?? ''),
             strtoupper((string) ($row['Null'] ?? 'NO')) === 'YES' ? 'NULL' : 'NOT NULL',

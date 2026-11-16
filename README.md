@@ -145,6 +145,10 @@ for WordPress tables:
 Other plain MySQL type names, such as `char(2)` or `tinyint unsigned`, are passed
 through unchanged. Anything else is rejected.
 
+Table, column, index and join column names must be plain SQL identifiers
+(letters, digits and underscores, not starting with a digit). Generated DDL quotes
+them with backticks.
+
 ## Entity Manager
 
 The entity manager follows the normal Doctrine workflow: `persist()` schedules

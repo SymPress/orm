@@ -7,6 +7,10 @@ namespace SymPress\Orm\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use SymPress\Orm\EntityHydrator;
 use SymPress\Orm\EntityManager;
+use SymPress\Orm\Exception\MappingException;
+use SymPress\Orm\Mapping\Column;
+use SymPress\Orm\Mapping\Entity;
+use SymPress\Orm\Mapping\Id;
 use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Tests\Fixtures\Animal;
@@ -16,6 +20,22 @@ use SymPress\Orm\Tests\Fixtures\EmailLog;
 
 final class MetadataFactoryTest extends TestCase
 {
+    public function testItRejectsMappedNamesThatAreNotPlainSqlIdentifiers(): void
+    {
+        $entity = new #[Entity(table: 'sympress_probe')] class {
+            #[Id]
+            #[Column(type: 'string', length: 32)]
+            public string $id = '';
+            #[Column(name: 'name`, password', type: 'string')]
+            public string $name = '';
+        };
+
+        $this->expectException(MappingException::class);
+        $this->expectExceptionMessage('invalid SQL identifier "name`, password"');
+
+        (new MetadataFactory())->getMetadataFor($entity::class);
+    }
+
     public function testItBuildsMetadataFromAttributes(): void
     {
         $metadata = (new MetadataFactory())->getMetadataFor(EmailLog::class);

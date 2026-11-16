@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SymPress\Orm\Metadata;
 
 use SymPress\Orm\Cache\CacheInterface;
+use SymPress\Orm\Exception\MappingException;
 use SymPress\Orm\Mapping\Cache as CacheMapping;
 use SymPress\Orm\Mapping\ChangeTrackingPolicy;
 use SymPress\Orm\Mapping\Column;
@@ -233,6 +234,7 @@ final class MetadataFactory
             );
         }
 
+        $this->assertSqlIdentifiers($className, $tableName, $columnsByName, $indexes, $associationsByProperty);
         $metadata = new ClassMetadata(
             $className,
             $tableName,
@@ -259,6 +261,48 @@ final class MetadataFactory
         $this->cache?->set($cacheKey, $metadata);
 
         return $this->metadata[$className] = $metadata;
+    }
+
+    /**
+     * Mapped names reach DDL and DML as identifiers, so they must be plain SQL identifiers.
+     *
+     * @param array<array-key, ColumnMetadata> $columnsByName
+     * @param list<IndexMetadata> $indexes
+     * @param array<string, AssociationMetadata> $associations
+     */
+    private function assertSqlIdentifiers(string $className, string $tableName, array $columnsByName, array $indexes, array $associations): void
+    {
+        $names = [$tableName, ...array_map('strval', array_keys($columnsByName))];
+
+        foreach ($indexes as $index) {
+            $names = [...$names, $index->name, ...$index->columns];
+        }
+
+        foreach ($associations as $association) {
+            $joinTable = $association->joinTable;
+            $joinColumns = $association->joinColumns;
+
+            if ($joinTable instanceof JoinTableMetadata) {
+                $names[] = $joinTable->name;
+                $joinColumns = [...$joinColumns, ...$joinTable->joinColumns, ...$joinTable->inverseJoinColumns];
+            }
+
+            foreach ($joinColumns as $joinColumn) {
+                $names = [...$names, $joinColumn->name, $joinColumn->referencedColumnName];
+            }
+        }
+
+        $invalid = array_values(array_unique(array_filter(
+            $names,
+            static fn (string $name): bool => preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name) !== 1,
+        )));
+
+        if ($invalid !== []) {
+            throw MappingException::invalid(array_map(
+                static fn (string $name): string => sprintf('Entity "%s" uses invalid SQL identifier "%s"; use letters, digits and underscores only.', $className, $name),
+                $invalid,
+            ));
+        }
     }
 
     /**
