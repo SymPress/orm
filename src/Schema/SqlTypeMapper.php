@@ -28,7 +28,10 @@ final readonly class SqlTypeMapper
             'datetime', 'datetime_immutable' => 'datetime',
             'date', 'date_immutable' => 'date',
             'time', 'time_immutable' => 'time',
-            default => $type,
+            // Other plain MySQL type names (e.g. char(2), tinyint) still pass through; anything else is rejected.
+            default => preg_match('/^[a-z]+(?:\(\d+(?:,\d+)?\))?(?: unsigned)?$/', $type) === 1
+                ? $type
+                : throw new \InvalidArgumentException(sprintf('Unsupported column type "%s" for column "%s".', $column->type, $column->columnName)),
         };
     }
 

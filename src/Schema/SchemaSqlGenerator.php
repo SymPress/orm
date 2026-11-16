@@ -174,7 +174,8 @@ final readonly class SchemaSqlGenerator
             return $default;
         }
 
-        return "'" . str_replace("'", "''", (string) $default) . "'";
+        // MySQL treats a backslash as an escape character in string literals by default.
+        return "'" . str_replace(['\\', "'"], ['\\\\', "''"], (string) $default) . "'";
     }
 
     private function joinColumnDefinition(JoinColumnMetadata $joinColumn, ?ClassMetadata $referencedMetadata): string

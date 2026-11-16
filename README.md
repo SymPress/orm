@@ -142,7 +142,8 @@ for WordPress tables:
 - `datetime`, `datetime_immutable`
 - `time`, `time_immutable`
 
-Unknown types are passed through as raw SQL type names.
+Other plain MySQL type names, such as `char(2)` or `tinyint unsigned`, are passed
+through unchanged. Anything else is rejected.
 
 ## Entity Manager
 

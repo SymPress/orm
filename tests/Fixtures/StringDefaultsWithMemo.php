@@ -29,6 +29,9 @@ final class StringDefaultsWithMemo
     #[Column(length: 40, default: ' two  spaces ')]
     public string $spaces;
 
+    #[Column(length: 40, default: 'C:\\temp\\')]
+    public string $path;
+
     #[Column(nullable: true)]
     public ?string $memo = null;
 }
