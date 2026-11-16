@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SymPress\Orm\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
+use SymPress\Orm\Metadata\ColumnMetadata;
 use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Schema\SchemaSqlGenerator;
@@ -30,6 +31,26 @@ final class SchemaToolTest extends TestCase
         self::assertStringContainsString('payload longtext NULL', $sql);
         self::assertStringContainsString('PRIMARY KEY  (id)', $sql);
         self::assertStringContainsString('KEY status_created (status, created_at)', $sql);
+    }
+
+    public function testDdlEscapesBackslashesInDefaultsAndRejectsUnsafeTypes(): void
+    {
+        $sql = new SchemaSqlGenerator();
+
+        self::assertSame(
+            "path varchar(20) NOT NULL DEFAULT 'C:\\\\it''s'",
+            $sql->columnDefinition(new ColumnMetadata('path', 'path', 'string', 20, default: "C:\\it's")),
+        );
+        self::assertSame('code char(2) NOT NULL', $sql->columnDefinition(new ColumnMetadata('code', 'code', 'char(2)')));
+
+        foreach (["varchar(10) DEFAULT ''", 'int; DROP TABLE wp_users'] as $type) {
+            try {
+                $sql->columnDefinition(new ColumnMetadata('code', 'code', $type));
+                self::fail(sprintf('Type "%s" must be rejected.', $type));
+            } catch (\InvalidArgumentException $exception) {
+                self::assertStringContainsString('Unsupported column type', $exception->getMessage());
+            }
+        }
     }
 
     public function testJoinTablesUseReferencedColumnTypes(): void
