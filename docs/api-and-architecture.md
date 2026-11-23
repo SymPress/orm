@@ -266,7 +266,7 @@ composer tests
 composer qa
 ```
 
-`composer cs` uses PHPCS with the SymPress WordPress ruleset. `composer static-analysis` runs PHPStan at max level against `src`. `composer tests` runs the unit and integration suites.
+`composer cs` uses PHPCS with the SymPress WordPress ruleset. `composer static-analysis` runs PHPStan at level 8 against `src`. `composer tests` runs the unit and integration suites.
 
 ## Reviewed schema and transaction behavior
 
