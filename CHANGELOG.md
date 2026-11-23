@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.10 — 2026-11-23
+
+- Hydrate `time` and `time_immutable` columns as `\DateTime` and `\DateTimeImmutable` and write them back as `H:i:s`. They came back as the raw string, so a `DateTime` property failed with a `TypeError`, and a `DateTime` value was written as `''`. Properties typed `string` for these columns have to change to `\DateTime` or `\DateTimeImmutable`.
+- Tests: the `wpdb` test double now prepares SQL like the real `wpdb::prepare()` and is checked against it on MariaDB and MySQL; every column type is hydrated from the all-string rows `wpdb` returns.
+
 ## 0.3.9 — 2026-11-23
 
 - Accept a literal `%` in query builder and DQL expressions that also bind parameters. `wpdb::prepare()` needs `%%`, so `LIKE 'que%'` or a DQL function emitting `DATE_FORMAT(..., '%Y-%m')` broke once the query had a parameter. Write `%` as is; code that wrote `%%` together with parameters as a workaround now gets a literal `%%`.
