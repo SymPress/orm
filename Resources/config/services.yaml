@@ -20,6 +20,7 @@ services:
             - '../../src/Collection/'
             - '../../src/Dbal/ConnectionInterface.php'
             - '../../src/Dbal/SqlPlatformInterface.php'
+            - '../../src/EntityManagerInterface.php'
             - '../../src/Event/Events.php'
             - '../../src/Event/LifecycleEventArgs.php'
             - '../../src/Event/PreUpdateEventArgs.php'
@@ -47,6 +48,10 @@ services:
     SymPress\Orm\EntityManager:
         arguments:
             $database: '@SymPress\Orm\Dbal\ConnectionInterface'
+        public: true
+
+    SymPress\Orm\EntityManagerInterface:
+        alias: SymPress\Orm\EntityManager
         public: true
 
     SymPress\Orm\Schema\SchemaTool:
