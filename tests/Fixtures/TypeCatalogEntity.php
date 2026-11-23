@@ -55,6 +55,10 @@ final class TypeCatalogEntity
         public \DateTime $at,
         #[Column(type: 'datetime_immutable')]
         public \DateTimeImmutable $atImmutable,
+        #[Column(type: 'time')]
+        public \DateTime $clock,
+        #[Column(type: 'time_immutable')]
+        public \DateTimeImmutable $clockImmutable,
         #[Column(type: 'string', length: 16, enumType: MailStatus::class)]
         public MailStatus $status,
         #[Column(type: 'smallint', enumType: Priority::class)]

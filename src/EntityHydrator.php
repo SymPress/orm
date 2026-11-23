@@ -88,10 +88,12 @@ final readonly class EntityHydrator
 
         $type = strtolower($column->type);
 
-        if ($value instanceof \DateTimeInterface && str_contains($type, 'date')) {
-            return $type === 'date' || $type === 'date_immutable'
-                ? $value->format('Y-m-d')
-                : $value->format('Y-m-d H:i:s');
+        if ($value instanceof \DateTimeInterface && (str_contains($type, 'date') || in_array($type, ['time', 'time_immutable'], true))) {
+            return $value->format(match ($type) {
+                'date', 'date_immutable' => 'Y-m-d',
+                'time', 'time_immutable' => 'H:i:s',
+                default => 'Y-m-d H:i:s',
+            });
         }
 
         if (in_array($type, ['boolean', 'bool'], true)) {
@@ -120,19 +122,11 @@ final readonly class EntityHydrator
 
         $type = strtolower($column->type);
 
-        if ($type === 'datetime_immutable') {
+        if (in_array($type, ['datetime_immutable', 'date_immutable', 'time_immutable'], true)) {
             return new \DateTimeImmutable((string) $value);
         }
 
-        if ($type === 'datetime') {
-            return new \DateTime((string) $value);
-        }
-
-        if ($type === 'date_immutable') {
-            return new \DateTimeImmutable((string) $value);
-        }
-
-        if ($type === 'date') {
+        if (in_array($type, ['datetime', 'date', 'time'], true)) {
             return new \DateTime((string) $value);
         }
 
