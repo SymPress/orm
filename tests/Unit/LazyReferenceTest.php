@@ -9,6 +9,8 @@ use SymPress\Orm\Cache\ArrayCache;
 use SymPress\Orm\EntityHydrator;
 use SymPress\Orm\EntityManager;
 use SymPress\Orm\Exception\EntityNotFoundException;
+use SymPress\Orm\Exception\OptimisticLockException;
+use SymPress\Orm\LockMode;
 use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Tests\Fixtures\Animal;
@@ -19,6 +21,7 @@ use SymPress\Orm\Tests\Fixtures\Dog;
 use SymPress\Orm\Tests\Fixtures\EmailLog;
 use SymPress\Orm\Tests\Fixtures\Playlist;
 use SymPress\Orm\Tests\Fixtures\Track;
+use SymPress\Orm\Tests\Fixtures\VersionedEmailLog;
 
 final class LazyReferenceTest extends TestCase
 {
@@ -30,7 +33,7 @@ final class LazyReferenceTest extends TestCase
         parent::setUp();
 
         $metadata = new MetadataFactory();
-        $registry = new EntityClassRegistry($metadata, classes: [Article::class, Author::class, EmailLog::class, Animal::class, Dog::class, Playlist::class, Track::class]);
+        $registry = new EntityClassRegistry($metadata, classes: [Article::class, Author::class, EmailLog::class, Animal::class, Dog::class, Playlist::class, Track::class, VersionedEmailLog::class]);
         // Records every SELECT and answers it with the rows of the table it reads.
         $this->database = new class extends \wpdb {
             /** @var list<string> */
@@ -142,6 +145,23 @@ final class LazyReferenceTest extends TestCase
         self::assertCount(1, $this->database->selects);
         self::assertTrue($this->entityManager->isOpen());
         self::assertSame(4, $author->flushCalls, 'Loaded entities still get preFlush and postFlush.');
+    }
+
+    public function testOptimisticLockLoadsReferenceToCompareItsVersion(): void
+    {
+        $this->database->rows = ['wp_sympress_mailer_logs' => [['id' => 'log-1', 'status' => 'queued', 'version' => '3']]];
+        $log = $this->entityManager->getReference(VersionedEmailLog::class, 'log-1');
+
+        $this->entityManager->lock($log, LockMode::OPTIMISTIC, 3);
+
+        self::assertFalse(self::isLazy($log));
+        self::assertCount(1, $this->database->selects);
+
+        $stale = $this->entityManager->getReference(VersionedEmailLog::class, 'log-2');
+        $this->database->rows = ['wp_sympress_mailer_logs' => [['id' => 'log-2', 'status' => 'queued', 'version' => '3']]];
+        $this->expectException(OptimisticLockException::class);
+        $this->expectExceptionMessage('expected version "2", actual version "3"');
+        $this->entityManager->lock($stale, LockMode::OPTIMISTIC, 2);
     }
 
     public function testRemovingReferenceDeletesByIdentifierWithoutLoading(): void
