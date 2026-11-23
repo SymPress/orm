@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SymPress\Orm\Event;
 
 use SymPress\Orm\EntityManager;
+use SymPress\Orm\EntityManagerInterface;
 use SymPress\Orm\Metadata\ClassMetadata;
 
 class LifecycleEventArgs
@@ -28,7 +29,7 @@ class LifecycleEventArgs
         return $this->entity;
     }
 
-    public function getEntityManager(): EntityManager
+    public function getEntityManager(): EntityManagerInterface
     {
         return $this->entityManager;
     }

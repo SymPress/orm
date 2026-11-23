@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SymPress\Orm\Event;
 
 use SymPress\Orm\EntityManager;
+use SymPress\Orm\EntityManagerInterface;
 
 final readonly class OnClearEventArgs
 {
@@ -14,7 +15,7 @@ final readonly class OnClearEventArgs
     ) {
     }
 
-    public function getEntityManager(): EntityManager
+    public function getEntityManager(): EntityManagerInterface
     {
         return $this->entityManager;
     }
