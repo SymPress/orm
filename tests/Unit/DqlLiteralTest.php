@@ -160,6 +160,44 @@ final class DqlLiteralTest extends TestCase
         yield 'dql delete' => [static fn (EntityManager $orm): mixed => $orm->createQuery('DELETE FROM EmailLog l WHERE l.id = 1 # x')];
     }
 
+    /** @param \Closure(EntityManager): mixed $compile */
+    #[DataProvider('unbalancedParentheses')]
+    public function testFragmentsWithUnbalancedParenthesesAreRejected(\Closure $compile): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unbalanced parentheses');
+
+        $compile($this->manager());
+    }
+
+    /** @return iterable<string, array{\Closure(EntityManager): mixed}> */
+    public static function unbalancedParentheses(): iterable
+    {
+        // The fragment would close the parentheses it is wrapped in and let its OR escape them.
+        $escape = 'l.id = 1) OR (1 = 1';
+        $logs = static fn (EntityManager $orm): QueryBuilder => $orm->createQueryBuilder()->select('l')->from(EmailLog::class, 'l')->where('l.status = 1');
+
+        yield 'where' => [static fn (EntityManager $orm): mixed => $logs($orm)->andWhere($escape)->compile()];
+        yield 'orWhere' => [static fn (EntityManager $orm): mixed => $logs($orm)->orWhere($escape)->compile()];
+        yield 'having' => [static fn (EntityManager $orm): mixed => $logs($orm)->groupBy('l.id')->having('COUNT(l.id) > 1')->andHaving('COUNT(l.id) > 1) OR (1 = 1')->compile()];
+        yield 'join condition' => [static fn (EntityManager $orm): mixed => $orm->createQueryBuilder()->select('a')->from(Article::class, 'a')->join('a.author', 'u', 'u.name = 1) OR (1 = 1')->compile()];
+        yield 'dql select' => [static fn (EntityManager $orm): mixed => $orm->createQuery('SELECT l FROM EmailLog l WHERE ' . $escape)->getSQL()];
+        yield 'dql delete' => [static fn (EntityManager $orm): mixed => $orm->createQuery('DELETE FROM EmailLog l WHERE ' . $escape)];
+        yield 'closing before opening' => [static fn (EntityManager $orm): mixed => $logs($orm)->andWhere(')l.id = 1(')->compile()];
+    }
+
+    public function testBalancedParenthesesAndParenthesesInLiteralsStillCompile(): void
+    {
+        $where = "(l.status = ')(' OR (l.id = :id AND l.status <> \"(\")) AND COUNT((l.id)) > 0";
+        $expected = "WHERE (`l`.`status` = ')(' OR (`l`.`id` = 'x' AND `l`.`status` <> \"(\")) AND COUNT((`l`.`id`)) > 0";
+
+        self::assertStringEndsWith(
+            $expected,
+            $this->manager()->createQueryBuilder()->select('l')->from(EmailLog::class, 'l')->where($where)->setParameter('id', 'x')->getQuery()->getSQL(),
+        );
+        self::assertStringEndsWith($expected, $this->manager()->createQuery('DELETE FROM EmailLog l WHERE ' . $where, ['id' => 'x'])->getSQL());
+    }
+
     public function testLookalikesOfRejectedSyntaxStillCompile(): void
     {
         $manager = $this->manager();
