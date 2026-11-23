@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 — 2026-11-23
+
+- Load rows that reference each other or themselves once. Since 0.4.0 a reference to an inheritance root with subclasses loads eagerly, and `fetch: EAGER` associations always did; when two such rows pointed at each other (`Person.spouse`) or a row at itself, loading never ended. A row that is still being hydrated now gets a lazy reference of its concrete class, filled from the same row.
+- Take the foreign key of a to-one association from the referenced column only. `flush()` of two entities referencing each other extracted them recursively and never returned.
+
 ## 0.4.0 — 2026-11-23
 
 - Load `getReference()` results and to-one associations on first access. They are native PHP lazy ghosts (`ReflectionClass::newLazyGhost()`, no generated proxies): reading the identifier does not query, the first access to any other property loads the row through the `find()` path (second-level cache, `postLoad`), and a row loaded by another query fills the reference without a second query. `$article->author->name` used to fail with "must not be accessed before initialization" unless the author had been loaded before. Each reference costs one query (N+1); join the association or load the targets first. Serializing, cloning, `json_encode()` and `==` load a reference, as any property access does.
