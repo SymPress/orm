@@ -198,6 +198,51 @@ final class DqlLiteralTest extends TestCase
         self::assertStringEndsWith($expected, $this->manager()->createQuery('DELETE FROM EmailLog l WHERE ' . $where, ['id' => 'x'])->getSQL());
     }
 
+    /** @return iterable<string, array{string, string}> */
+    public static function commasAndKeywordsInsideParentheses(): iterable
+    {
+        $articles = 'FROM `wp_sympress_articles` `a`';
+
+        yield 'select function' => ['SELECT CONCAT(a.title, a.id) FROM Article a', "SELECT CONCAT(`a`.`title`, `a`.`id`) {$articles}"];
+        yield 'select function and field' => [
+            "SELECT IFNULL(a.title, 'x'), a.id FROM Article a",
+            "SELECT IFNULL(`a`.`title`, 'x'), `a`.`id` {$articles}",
+        ];
+        yield 'nested call' => [
+            'SELECT CONCAT(IFNULL(a.title, a.id), LOWER(a.id)), a.id FROM Article a',
+            "SELECT CONCAT(IFNULL(`a`.`title`, `a`.`id`), LOWER(`a`.`id`)), `a`.`id` {$articles}",
+        ];
+        yield 'literal with comma and parentheses' => [
+            "SELECT CONCAT(a.title, ', (x'), a.id FROM Article a",
+            "SELECT CONCAT(`a`.`title`, ', (x'), `a`.`id` {$articles}",
+        ];
+        yield 'group by function' => [
+            'SELECT a.id FROM Article a GROUP BY CONCAT(a.title, a.id), a.id',
+            "SELECT `a`.`id` {$articles} GROUP BY CONCAT(`a`.`title`, `a`.`id`), `a`.`id`",
+        ];
+        yield 'registered function with two arguments' => [
+            "SELECT DATE_FMT(a.title, '%Y') FROM Article a",
+            "SELECT DATE_FORMAT(`a`.`title`, '%Y') {$articles}",
+        ];
+        yield 'keyword inside a function in HAVING' => [
+            'SELECT a.id FROM Article a GROUP BY a.id HAVING GROUP_CONCAT(a.title ORDER BY a.id) <> 1 ORDER BY a.id',
+            "SELECT `a`.`id` {$articles} GROUP BY `a`.`id` HAVING GROUP_CONCAT(`a`.`title` ORDER BY `a`.`id`) <> 1 ORDER BY `a`.`id` ASC",
+        ];
+        yield 'update with a function in SET' => [
+            "UPDATE Article a SET a.title = CONCAT(a.title, ', x'), a.id = a.id WHERE a.id = 'a-1'",
+            "UPDATE `wp_sympress_articles` `a` SET `a`.`title` = CONCAT(`a`.`title`, ', x'), `a`.`id` = `a`.`id` WHERE `a`.`id` = 'a-1'",
+        ];
+    }
+
+    #[DataProvider('commasAndKeywordsInsideParentheses')]
+    public function testDqlListsSplitOnlyOutsideParentheses(string $dql, string $sql): void
+    {
+        $manager = $this->manager();
+        $manager->registerDqlFunction('DATE_FMT', static fn (string $arguments): string => 'DATE_FORMAT(' . $arguments . ')');
+
+        self::assertSame($sql, $manager->createQuery($dql)->getSQL());
+    }
+
     public function testLookalikesOfRejectedSyntaxStillCompile(): void
     {
         $manager = $this->manager();
