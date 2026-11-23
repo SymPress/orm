@@ -71,7 +71,26 @@ final readonly class DqlCompiler
     /** @return list<string> the trimmed comma-separated parts of masked code, with their literals restored */
     private static function splitList(string $code, LiteralMask $mask): array
     {
-        return array_map(static fn (string $part): string => $mask->restore(trim($part)), explode(',', $code));
+        $parts = [''];
+        $depth = 0;
+
+        // A comma inside parentheses separates function arguments, not list items.
+        foreach (str_split($code) as $character) {
+            $depth += match ($character) {
+                '(' => 1,
+                ')' => -1,
+                default => 0,
+            };
+
+            if ($character === ',' && $depth === 0) {
+                $parts[] = '';
+                continue;
+            }
+
+            $parts[array_key_last($parts)] .= $character;
+        }
+
+        return array_map(static fn (string $part): string => $mask->restore(trim($part)), $parts);
     }
 
     /**
@@ -222,8 +241,16 @@ final readonly class DqlCompiler
 
         foreach ($keywords as $keyword) {
             // After a dot the word is a column, after a colon a named parameter.
-            if (preg_match('/(?<![.:])\b' . str_replace(' ', '\s+', $keyword) . '\b/i', $tail, $match, PREG_OFFSET_CAPTURE) === 1) {
-                $positions[$keyword] = $match[0][1];
+            preg_match_all('/(?<![.:])\b' . str_replace(' ', '\s+', $keyword) . '\b/i', $tail, $matches, PREG_OFFSET_CAPTURE);
+
+            foreach ($matches[0] as [, $offset]) {
+                $before = substr($tail, 0, $offset);
+
+                // Inside parentheses the keyword belongs to a function call, as in GROUP_CONCAT(... ORDER BY ...).
+                if (substr_count($before, '(') === substr_count($before, ')')) {
+                    $positions[$keyword] = $offset;
+                    break;
+                }
             }
         }
 
