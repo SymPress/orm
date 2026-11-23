@@ -374,6 +374,47 @@ final class QueryBuilderTest extends TestCase
         $manager->createQuery('DELETE FROM EmailLog l WHERE l.id = :id', ['id' => new \stdClass()]);
     }
 
+    public function testLiteralPercentWorksTogetherWithBoundParameters(): void
+    {
+        $manager = $this->emailLogManager();
+        $manager->registerDqlFunction('YEAR_MONTH', static fn (string $argument): string => "DATE_FORMAT({$argument}, '%Y-%m')");
+
+        $query = $manager->createQueryBuilder()->select('l')->from(EmailLog::class, 'l')
+            ->where("l.status LIKE '%sale%' AND YEAR_MONTH(l.createdAt) = :month")
+            ->setParameter('month', '2026-11')
+            ->getQuery();
+
+        self::assertSame(
+            "SELECT `l`.* FROM `wp_sympress_mailer_logs` `l` WHERE `l`.`status` LIKE '%sale%'"
+            . " AND DATE_FORMAT(`l`.`created_at`, '%Y-%m') = '2026-11'",
+            $query->getSQL(),
+        );
+    }
+
+    public function testLiteralPercentStaysVerbatimWithoutParameters(): void
+    {
+        $compiled = $this->emailLogManager()->createQueryBuilder()->select('l')->from(EmailLog::class, 'l')
+            ->where("l.status LIKE '%sale%'")
+            ->compile();
+
+        self::assertStringEndsWith("WHERE `l`.`status` LIKE '%sale%'", $compiled->sql);
+        self::assertSame([], $compiled->parameters);
+    }
+
+    public function testDqlUpdateAndDeleteKeepLiteralPercent(): void
+    {
+        $manager = $this->emailLogManager();
+
+        self::assertSame(
+            "UPDATE `wp_sympress_mailer_logs` `l` SET `l`.`status` = 'sent' WHERE `l`.`status` LIKE 'q%'",
+            $manager->createQuery("UPDATE EmailLog l SET l.status = :status WHERE l.status LIKE 'q%'", ['status' => 'sent'])->getSQL(),
+        );
+        self::assertSame(
+            "DELETE `l` FROM `wp_sympress_mailer_logs` `l` WHERE `l`.`status` LIKE 'q%'",
+            $manager->createQuery("DELETE FROM EmailLog l WHERE l.status LIKE 'q%'")->getSQL(),
+        );
+    }
+
     public function testSelectParametersAreBoundBeforeWhereParameters(): void
     {
         $compiled = $this->emailLogManager()->createQueryBuilder()

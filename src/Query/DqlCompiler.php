@@ -92,7 +92,7 @@ final readonly class DqlCompiler
             $sql .= ' WHERE ' . self::compileExpression($matches[4], $aliases, $entityManager, $normalizedParameters, $values);
         }
 
-        return new CompiledQuery($sql, $values);
+        return new CompiledQuery(self::unpreparedSql($sql, $values), $values);
     }
 
     /**
@@ -122,7 +122,7 @@ final readonly class DqlCompiler
             $sql .= ' WHERE ' . self::compileExpression($matches[3], $aliases, $entityManager, $normalizedParameters, $values);
         }
 
-        return new CompiledQuery($sql, $values);
+        return new CompiledQuery(self::unpreparedSql($sql, $values), $values);
     }
 
     private static function compileTail(string $tail, QueryBuilder $builder): void
@@ -231,6 +231,17 @@ final readonly class DqlCompiler
         return $clauses;
     }
 
+    /**
+     * Expressions escape a literal % as %% for wpdb::prepare(). SQL without values is never prepared, so the
+     * escape is undone there; every %% in it comes from that escape because no placeholder was added.
+     *
+     * @param list<mixed> $values
+     */
+    public static function unpreparedSql(string $sql, array $values): string
+    {
+        return $values === [] ? str_replace('%%', '%', $sql) : $sql;
+    }
+
     /** @return class-string */
     private static function entityClass(string $name, EntityClassRegistry $entities): string
     {
@@ -256,7 +267,8 @@ final readonly class DqlCompiler
         array &$values,
     ): string {
 
-        $expression = $entityManager->compileDqlFunctions($expression);
+        // A literal % has to reach wpdb::prepare() as %%; see unpreparedSql().
+        $expression = str_replace('%', '%%', $entityManager->compileDqlFunctions($expression));
         $expression = preg_replace_callback(
             '/\b([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\b/',
             static function (array $matches) use ($aliases, $entityManager): string {

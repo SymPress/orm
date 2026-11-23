@@ -104,6 +104,13 @@ final class OrmDatabaseTest extends TestCase
         self::assertCount(1, $manager->getRepository(EmailLog::class)->findBy(['status' => MailStatus::Queued]));
         $future = $manager->createQueryBuilder()->select('e')->from(EmailLog::class, 'e')->where('e.createdAt > :now');
         self::assertSame([], $future->setParameter('now', new \DateTimeImmutable('+1 day'))->getQuery()->getResult());
+        $like = $manager->createQueryBuilder()->select('e')->from(EmailLog::class, 'e')
+            ->where("e.status LIKE 'que%' AND e.id = :id")
+            ->setParameter('id', 'compiled');
+        $rows = $like->getQuery()->getResult();
+        self::assertCount(1, $rows);
+        self::assertInstanceOf(EmailLog::class, $rows[0]);
+        self::assertSame('compiled', $rows[0]->id);
         self::assertSame([], $metadata->mappingResources());
     }
 
