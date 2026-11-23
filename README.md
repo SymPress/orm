@@ -322,8 +322,9 @@ Parameters work in `select()` expressions too.
 expressions and DQL strings are SQL expression fragments. Mapped field paths
 and `:name` or `?1` parameters are rewritten in them; quoted literals (`'...'`,
 `"..."`, `` `...` ``) are left exactly as written. A `;`, a subselect
-(`SELECT`), `UNION`, a comment (`/*`, `#`, `-- `) or an unterminated literal
-outside a literal throws `InvalidArgumentException`.
+(`SELECT`, `TABLE`), `UNION`, `INTERSECT`, `EXCEPT`, a comment (`/*`, `#`,
+`-- `) or an unterminated literal outside a literal throws
+`InvalidArgumentException`.
 
 Keep dynamic values out of query strings. The builder validates mapped field
 paths and prepares parameter values, but it cannot make interpolated strings
