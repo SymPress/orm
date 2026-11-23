@@ -385,6 +385,11 @@ final readonly class DqlCompiler
             return 'NULL';
         }
 
+        // wpdb binds nested arrays and other non-scalars as '' (or unwraps a lone one), changing the filter.
+        if (!is_scalar($value)) {
+            throw new \InvalidArgumentException(sprintf('Unsupported query parameter of type "%s"; list items must be scalar.', get_debug_type($value)));
+        }
+
         $values[] = $value;
 
         return $entityManager->parameterPlaceholder($value);
