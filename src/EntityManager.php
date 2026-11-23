@@ -386,14 +386,18 @@ final class EntityManager
         }
 
         $reflection = new \ReflectionClass($entityClass);
-        $entity = $reflection->newInstanceWithoutConstructor();
+        $entity = $reflection->newLazyGhost(function (object $reference) use ($metadata, $id, $identifierData): void {
+            $this->assertOpen();
+
+            if ($this->load($metadata, $id) !== $reference) {
+                throw EntityNotFoundException::fromClassAndIdentifier($metadata->className, $identifierData);
+            }
+        });
 
         foreach ($metadata->columns() as $column) {
-            if (!array_key_exists($column->columnName, $identifierData)) {
-                continue;
+            if (array_key_exists($column->columnName, $identifierData)) {
+                $reflection->getProperty($column->propertyName)->setRawValueWithoutLazyInitialization($entity, $identifierData[$column->columnName]);
             }
-
-            $this->hydrator->assign($entity, $column->propertyName, $identifierData[$column->columnName]);
         }
 
         $data = $this->hydrator->extract($entity, $metadata, $this);
@@ -1147,6 +1151,13 @@ final class EntityManager
 
     private function copyEntityState(object $source, object $target): void
     {
+        $targetClass = new \ReflectionClass($target);
+
+        // The source holds the loaded row, so filling an unloaded reference must not load it a second time.
+        if ($targetClass->isUninitializedLazyObject($target)) {
+            $targetClass->markLazyObjectAsInitialized($target);
+        }
+
         $reflection = new \ReflectionObject($source);
 
         foreach ($reflection->getProperties() as $sourceProperty) {
