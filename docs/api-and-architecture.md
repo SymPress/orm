@@ -167,6 +167,14 @@ To-many associations can use `Collection` or `PersistentCollection`. Persistent 
 
 Owning many-to-many collections are synchronized during `flush()`. The ORM compares identifier snapshots and skips unchanged collections, which avoids delete-and-reinsert work on repeated flushes.
 
+### References and lazy loading
+
+`getReference()` returns the managed instance if there is one. Otherwise it creates a native lazy ghost (`ReflectionClass::newLazyGhost()`), sets the identifier properties without initializing it and registers it in the unit of work as an uninitialized reference. To-one associations are hydrated as such references. The first access to any other property runs the `find()` loader (second-level cache, then one `SELECT`), which hydrates the ghost in place, records its original data and dispatches `postLoad`. A missing row throws `EntityNotFoundException`; the ghost stays unloaded. When another query loads the row first, `registerManaged()` fills the ghost from that row without a second query.
+
+ORM internals read only the identifier of an unloaded reference: change detection, cascades, foreign-key extraction, `contains()`, `detach()`, `clear()` and `remove()` neither load it nor query. Cascades and orphan removal therefore do not walk its associations; `remove()` of an unloaded reference deletes only its own row.
+
+A reference to an inheritance root whose discriminator map lists subclasses is loaded eagerly, because the row may belong to a subclass (or the root may be abstract) and a lazy object cannot change its class. A reference detached by `clear()`, `detach()` or `close()` keeps its identifier and throws a `LogicException` on first access to another property instead of loading; load the entity again with `find()`.
+
 ## Events
 
 `EventManager` dispatches lifecycle and unit-of-work events. Subscribers implement `EventSubscriberInterface`.
