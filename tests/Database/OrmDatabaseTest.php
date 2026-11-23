@@ -26,9 +26,11 @@ use SymPress\Orm\Tests\Fixtures\Garage;
 use SymPress\Orm\Tests\Fixtures\MailStatus;
 use SymPress\Orm\Tests\Fixtures\NumericRole;
 use SymPress\Orm\Tests\Fixtures\NarrowEmailLog;
+use SymPress\Orm\Tests\Fixtures\Playlist;
 use SymPress\Orm\Tests\Fixtures\SportsCar;
 use SymPress\Orm\Tests\Fixtures\StringDefaults;
 use SymPress\Orm\Tests\Fixtures\StringDefaultsWithMemo;
+use SymPress\Orm\Tests\Fixtures\Track;
 use SymPress\Orm\Tests\Fixtures\Vehicle;
 use SymPress\WordPress\Migration\Application\MigrationLifecycle;
 use SymPress\WordPress\Migration\Domain\MigrationCollection;
@@ -54,7 +56,7 @@ final class OrmDatabaseTest extends TestCase
 
     private function cleanup(): void
     {
-        foreach (['sympress_articles', 'sympress_authors', 'sympress_mailer_logs', 'sympress_numeric_roles', 'orm_review_state', 'orm_review_state_history', 'orm_string_defaults', 'sympress_vehicles', 'sympress_garages', 'sympress_garage_rentals'] as $name) {
+        foreach (['sympress_articles', 'sympress_authors', 'sympress_mailer_logs', 'sympress_numeric_roles', 'orm_review_state', 'orm_review_state_history', 'orm_string_defaults', 'sympress_vehicles', 'sympress_garages', 'sympress_garage_rentals', 'sympress_playlists', 'sympress_tracks'] as $name) {
             $this->database->query($this->database->prepare('DROP TABLE IF EXISTS %i', $this->database->prefix . $name));
         }
     }
@@ -79,6 +81,27 @@ final class OrmDatabaseTest extends TestCase
         self::assertTrue($additive->requiresDestructiveUpdates('default'));
         $this->expectException(\SymPress\WordPress\Migration\Exception\MigrationOperationException::class);
         new SchemaMigrationFactory($additive)->create('default')->up();
+    }
+
+    public function testRemovingReferenceRemovesOrphansWithRealWpdb(): void
+    {
+        $metadata = new MetadataFactory();
+        $entities = new EntityClassRegistry($metadata, classes: [Playlist::class, Track::class]);
+        $tool = new SchemaTool($metadata, $entities, new SchemaSqlGenerator(), $this->database);
+        self::assertTrue(new WordPressSqlExecutor($this->database)->execute($tool->getCreateSchemaSql()));
+        $manager = new EntityManager($metadata, $entities, new EntityHydrator(), $this->database);
+        $playlist = new Playlist('playlist-1');
+        $manager->persist($playlist);
+        $manager->persist(new Track('track-1', $playlist));
+        $manager->persist(new Track('track-2', $playlist));
+        $manager->flush();
+        $manager->clear();
+
+        $manager->remove($manager->getReference(Playlist::class, 'playlist-1'));
+        $manager->flush();
+
+        self::assertSame('0', $this->database->get_var('SELECT COUNT(*) FROM wp_sympress_tracks'));
+        self::assertSame('0', $this->database->get_var('SELECT COUNT(*) FROM wp_sympress_playlists'));
     }
 
     public function testToOneReferenceLoadsOnFirstAccessWithRealWpdb(): void
