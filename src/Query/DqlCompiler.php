@@ -98,9 +98,8 @@ final readonly class DqlCompiler
             self::compileExpression($matches[3], $aliases, $entityManager, $normalizedParameters, $values),
         );
 
-        if (($matches[4] ?? '') !== '') {
-            $sql .= ' WHERE ' . self::compileExpression($matches[4], $aliases, $entityManager, $normalizedParameters, $values);
-        }
+        $where = ($matches[4] ?? '') === '' ? null : self::compileExpression($matches[4], $aliases, $entityManager, $normalizedParameters, $values);
+        $sql .= self::whereClause($where, $entityManager->discriminatorCondition($metadata, $alias, $values));
 
         return new CompiledQuery(self::unpreparedSql($sql, $values), $values);
     }
@@ -128,9 +127,8 @@ final readonly class DqlCompiler
             $entityManager->quoteIdentifier($metadata->tableName($entityManager->tablePrefix())),
         );
 
-        if (($matches[3] ?? '') !== '') {
-            $sql .= ' WHERE ' . self::compileExpression($matches[3], $aliases, $entityManager, $normalizedParameters, $values);
-        }
+        $where = ($matches[3] ?? '') === '' ? null : self::compileExpression($matches[3], $aliases, $entityManager, $normalizedParameters, $values);
+        $sql .= self::whereClause($where, $entityManager->discriminatorCondition($metadata, $alias, $values));
 
         return new CompiledQuery(self::unpreparedSql($sql, $values), $values);
     }
