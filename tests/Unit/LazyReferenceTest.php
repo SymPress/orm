@@ -36,7 +36,7 @@ final class LazyReferenceTest extends TestCase
 
         $metadata = new MetadataFactory();
         $registry = new EntityClassRegistry($metadata, classes: [Article::class, Author::class, EmailLog::class, Animal::class, Dog::class, Playlist::class, Track::class, VersionedEmailLog::class]);
-        // Records every SELECT and answers it with the rows of the table it reads.
+        // Records every SELECT and answers it with the rows of the table it reads, narrowed to the requested id.
         $this->database = new class extends \wpdb {
             /** @var list<string> */
             public array $selects = [];
@@ -47,10 +47,11 @@ final class LazyReferenceTest extends TestCase
             public function get_results(string $query, string|int $output = ARRAY_A): array
             {
                 $this->selects[] = $query;
+                $id = preg_match("/`id` = '([^']*)'/", $query, $match) === 1 ? $match[1] : null;
 
                 foreach ($this->rows as $table => $rows) {
                     if (str_contains($query, '`' . $table . '`')) {
-                        return $rows;
+                        return array_values(array_filter($rows, static fn (array $row): bool => $id === null || $row['id'] === $id));
                     }
                 }
 
