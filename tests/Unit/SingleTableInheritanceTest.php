@@ -258,6 +258,19 @@ final class SingleTableInheritanceTest extends TestCase
         $reference->garage;
     }
 
+    public function testFindIgnoresAWrongClassReferenceNextToTheLoadedRow(): void
+    {
+        $manager = $this->manager();
+        self::assertInstanceOf(Car::class, $manager->find(Car::class, 'c1'));
+        // A guess of the wrong class next to the loaded Car.
+        $guess = $manager->getReference(SportsCar::class, 'c1');
+        $this->database->selects = [];
+
+        self::assertNull($manager->find(SportsCar::class, 'c1'));
+        self::assertSame($guess, $manager->getReference(SportsCar::class, 'c1'));
+        self::assertSame([], $this->database->selects);
+    }
+
     public function testUnloadedReferenceOfAnotherClassDoesNotAnswerAHierarchyLookup(): void
     {
         $manager = $this->manager();
