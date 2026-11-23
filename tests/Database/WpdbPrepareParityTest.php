@@ -40,6 +40,9 @@ final class WpdbPrepareParityTest extends TestCase
         yield 'escaped percent' => ["SELECT 'que%%' LIKE %s", ['que%']];
         yield 'unknown percent' => ["SELECT DATE_FORMAT(NOW(), '%Y') = %s", ['2026']];
         yield 'placeholder after percent' => ["SELECT 'abc' LIKE '%%%s%%'", ['b']];
+        yield 'string placeholder after escaped percent' => ['SELECT 7 %%%s = 1', ['2 OR 1=1']];
+        yield 'string placeholder spaced from escaped percent' => ['SELECT 7 %% %s = 1', ['2 OR 1=1']];
+        yield 'placeholder between literals' => ["SELECT 'a'%s'b', 'a' %s 'b'", ['x', 'y']];
         yield 'too few arguments' => ['SELECT %s, %s', ['one']];
         yield 'too many arguments' => ['SELECT %s', ['one', 'two']];
         yield 'arguments as one array' => ['SELECT %s, %d', [['one', 2]]];
