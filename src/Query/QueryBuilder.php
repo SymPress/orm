@@ -246,7 +246,7 @@ final class QueryBuilder
             $parameters[] = max(0, $this->firstResult);
         }
 
-        return new CompiledQuery($sql, $parameters, $this->returnsRootEntity() ? $metadata : null);
+        return new CompiledQuery(DqlCompiler::unpreparedSql($sql, $parameters), $parameters, $this->returnsRootEntity() ? $metadata : null);
     }
 
     private function addJoin(string $type, string $associationPath, string $alias, ?string $condition = null): self
@@ -460,7 +460,8 @@ final class QueryBuilder
     /** @param list<mixed> $parameters */
     private function compileExpression(string $expression, array &$parameters): string
     {
-        $expression = $this->entityManager->compileDqlFunctions($expression);
+        // A literal % has to reach wpdb::prepare() as %%; see DqlCompiler::unpreparedSql().
+        $expression = str_replace('%', '%%', $this->entityManager->compileDqlFunctions($expression));
         $expression = preg_replace_callback(
             '/\b([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\b/',
             function (array $matches): string {
