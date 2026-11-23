@@ -206,6 +206,25 @@ final class EntityManager implements EntityManagerInterface
         }
     }
 
+    /** Removes an associated entity; a reference whose row is already gone, such as a dangling key, has nothing left to delete. */
+    private function cascadeRemove(object $entity): void
+    {
+        try {
+            self::initialize($entity);
+        } catch (EntityNotFoundException $exception) {
+            $metadata = $this->getClassMetadata($entity::class);
+
+            // A row missing further down the reference's own load does not mean the reference itself is gone.
+            if ($this->exists($metadata, $this->identifierWhere($entity, $metadata))) {
+                throw $exception;
+            }
+
+            return;
+        }
+
+        $this->remove($entity);
+    }
+
     public function flush(): void
     {
         $this->assertOpen();
@@ -1536,14 +1555,14 @@ final class EntityManager implements EntityManagerInterface
                 if ($value instanceof Collection || is_array($value)) {
                     foreach ($value as $child) {
                         if (is_object($child)) {
-                            $operation === 'remove' ? $this->remove($child) : $this->persist($child);
+                            $operation === 'remove' ? $this->cascadeRemove($child) : $this->persist($child);
                         }
                     }
                     continue;
                 }
 
                 if (is_object($value)) {
-                    $operation === 'remove' ? $this->remove($value) : $this->persist($value);
+                    $operation === 'remove' ? $this->cascadeRemove($value) : $this->persist($value);
                 }
             }
         } finally {
