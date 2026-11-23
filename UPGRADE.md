@@ -2,7 +2,7 @@
 
 ## From 0.3.8 to 1.0
 
-These behaviour changes from 0.3.9 to 0.5.3 can require action. `CHANGELOG.md`
+These behaviour changes from 0.3.9 to 0.5.4 can require action. `CHANGELOG.md`
 lists every change.
 
 ### Queries
@@ -27,6 +27,13 @@ lists every change.
   binds across the `AND`. Queries that combine a fragment containing `OR` now
   return fewer rows: the ones they were written to return. Check code or tests
   that relied on the old results or compare generated SQL.
+- **Single-table subclasses (0.5.4).** Queries on a subclass of a single-table
+  hierarchy (repositories, the query builder, DQL, `find()`, references and
+  to-many collections) return only rows of that class and its mapped
+  subclasses, and DQL `UPDATE` and `DELETE` on it change only those rows. Code
+  that queried a subclass to reach rows of the whole hierarchy has to query the
+  root class instead. `find()` for a subclass with the identifier of another
+  class's row returns `null`.
 
 ### Column types
 
