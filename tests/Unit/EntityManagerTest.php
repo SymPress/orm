@@ -212,7 +212,7 @@ final class EntityManagerTest extends TestCase
         $metadataFactory = new MetadataFactory();
         $registry = new EntityClassRegistry($metadataFactory, classes: [ExplicitEmailLog::class]);
         $database = new \wpdb();
-        $database->countResult = 1;
+        $database->resultRows = [['id' => 'log-1', 'status' => 'queued']];
         $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), $database);
         $log = new ExplicitEmailLog('log-1', 'queued');
 
@@ -236,7 +236,7 @@ final class EntityManagerTest extends TestCase
         $metadataFactory = new MetadataFactory();
         $registry = new EntityClassRegistry($metadataFactory, classes: [VersionedEmailLog::class]);
         $database = new \wpdb();
-        $database->countResult = 1;
+        $database->resultRows = [['id' => 'log-1', 'status' => 'queued', 'version' => '1']];
         $database->updateResult = 0;
         $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), $database);
         $log = new VersionedEmailLog('log-1', 'queued', 1);
@@ -259,7 +259,7 @@ final class EntityManagerTest extends TestCase
         $metadataFactory = new MetadataFactory();
         $registry = new EntityClassRegistry($metadataFactory, classes: [VersionedEmailLog::class]);
         $database = new \wpdb();
-        $database->countResult = 1;
+        $database->resultRows = [['id' => 'log-1', 'status' => 'queued', 'version' => '1']];
         $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), $database);
         $log = new VersionedEmailLog('log-1', 'queued', 1);
 

@@ -167,9 +167,12 @@ final class EntityManager implements EntityManagerInterface
 
         $data = $this->hydrator->extract($entity, $metadata, $this);
         $id = $this->identifierFromData($metadata, $data);
+        $row = $id === null ? null : $this->fetchRowByIdentifier($metadata, $id);
 
-        if ($id !== null && $this->exists($metadata, $id)) {
-            $this->unitOfWork->persistExisting($entity, $metadata, $data);
+        // The row is the original data, so flush() writes what differs between the object and the row.
+        if ($row !== null) {
+            $this->unitOfWork->persistExisting($entity, $metadata, $this->hydrator->rowData($metadata, $row, $this));
+
             $this->cascade($entity, $metadata, 'persist');
             return;
         }
