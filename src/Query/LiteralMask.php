@@ -55,15 +55,16 @@ final readonly class LiteralMask
 
     /**
      * Masks an expression fragment and rejects code that would end it or turn it into another statement: a ; ,
-     * a subselect, UNION, or a comment, which cuts off whatever the builder appends after the fragment.
+     * a subselect (SELECT or MySQL's TABLE), a set operation (UNION, INTERSECT, EXCEPT), or a comment, which cuts
+     * off whatever the builder appends after the fragment.
      */
     public static function expression(string $fragment): self
     {
         $mask = self::mask($fragment);
 
         // MySQL starts a -- comment only before whitespace or a control character; \x01 opens a masked literal.
-        // SELECT and UNION after a dot are column names.
-        if (preg_match('/;|\/\*|#|--(?=[\x00\x02-\x20\x7f]|$)|(?<!\.)\b(?:SELECT|UNION)\b/i', $mask->code, $match) === 1) {
+        // These reserved words are column names only after a dot.
+        if (preg_match('/;|\/\*|#|--(?=[\x00\x02-\x20\x7f]|$)|(?<!\.)\b(?:SELECT|TABLE|UNION|INTERSECT|EXCEPT)\b/i', $mask->code, $match) === 1) {
             throw new \InvalidArgumentException(sprintf(
                 'Unsupported "%s" in DQL expression "%s"; statement separators, subselects, UNION and comments are rejected.',
                 trim($match[0]),

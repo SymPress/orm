@@ -120,6 +120,9 @@ final class DqlLiteralTest extends TestCase
         yield 'subselect' => ['l.id IN (SELECT ID FROM wp_users)'];
         yield 'lowercase subselect' => ['l.id in (select ID from wp_users)'];
         yield 'union' => ['l.id = :id UNION ALL (l.id)'];
+        yield 'table subquery' => ['l.id IN (TABLE wp_users)'];
+        yield 'intersect' => ['l.id = :id INTERSECT (l.id)'];
+        yield 'except' => ['l.id = :id except (l.id)'];
         yield 'block comment' => ['l.id = :id /* x */'];
         yield 'executable comment' => ['l.id = :id /*!50000 OR 1 = 1 */'];
         yield 'hash comment' => ['l.id = :id #x'];
@@ -160,8 +163,8 @@ final class DqlLiteralTest extends TestCase
     public function testLookalikesOfRejectedSyntaxStillCompile(): void
     {
         $manager = $this->manager();
-        $where = "l.status = 'a; -- # /* SELECT UNION' AND l.id = 5--1 AND l.id = 5--'1' AND e.select = \"x;\"";
-        $expected = "WHERE `l`.`status` = 'a; -- # /* SELECT UNION' AND `l`.`id` = 5--1 AND `l`.`id` = 5--'1' AND e.select = \"x;\"";
+        $where = "l.status = 'a; -- # /* SELECT UNION' AND l.id = 5--1 AND l.id = 5--'1' AND e.select = e.table AND e.union = \"x;\"";
+        $expected = "WHERE `l`.`status` = 'a; -- # /* SELECT UNION' AND `l`.`id` = 5--1 AND `l`.`id` = 5--'1' AND e.select = e.table AND e.union = \"x;\"";
 
         self::assertStringEndsWith($expected, $manager->createQuery('SELECT l FROM EmailLog l WHERE ' . $where)->getSQL());
         self::assertStringEndsWith($expected, $manager->createQueryBuilder()->select('l')->from(EmailLog::class, 'l')->where($where)->getQuery()->getSQL());
