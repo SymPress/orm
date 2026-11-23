@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.4 — 2026-11-23
+
+- Filter queries on a single-table subclass by its discriminator. They read the whole table: `getRepository(Dog::class)->findAll()` returned animals too, `find(Dog::class, 'a1')` returned an `Animal`, and DQL `DELETE FROM Dog d` and `UPDATE Dog d` changed rows of the whole hierarchy. A query whose entity is a subclass with a discriminator value now sees only rows whose discriminator is that class's value or the value of one of its mapped subclasses: the query builder and DQL `SELECT` (root and joined entities), DQL `UPDATE` and `DELETE`, `find()`, the row loader behind lazy references, and loading and counting of to-many collections. The values are bound as parameters. `find()` for a subclass with the identifier of another class's row returns `null`. Queries on the hierarchy root are unchanged. Behaviour change: subclass queries return and change fewer rows; see `UPGRADE.md`.
+
 ## 0.5.3 — 2026-11-23
 
 - Parenthesize query predicates where they are combined. `where()`, `andWhere()`, `having()`, `andHaving()`, join conditions and the `orWhere()` composition joined fragments with ` AND ` without parentheses, so an `OR` inside one fragment bound across the `AND`: `where('a.title = :t OR a.title = :u')->andWhere('a.author = :au')` filtered by author in the second branch only, `orWhere()` followed by `andWhere()` compiled to `(A) OR (B) AND C`, and `JOIN a.author au WITH au.name = :n OR au.name = :m` joined every author named `:m` to every article. The same reached `Criteria` and `Repository::matching()`. Each fragment now stays one predicate; a single `where()` or `having()` predicate keeps its SQL. Behaviour change: such queries return fewer rows and different SQL; see `UPGRADE.md`.
