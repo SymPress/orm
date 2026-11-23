@@ -270,14 +270,7 @@ final readonly class EntityHydrator
                 return new Collection();
             }
 
-            return new PersistentCollection(
-                $owner,
-                $association->propertyName,
-                static fn (): array => $entityManager->loadAssociationCollection($owner, $association),
-                strtoupper($association->fetch) === 'EXTRA_LAZY'
-                    ? static fn (): int => $entityManager->countAssociationCollection($owner, $association)
-                    : null,
-            );
+            return $this->lazyCollection($owner, $association, $entityManager);
         }
 
         if (!$association->isOwningSide()) {
@@ -297,6 +290,22 @@ final readonly class EntityHydrator
         return strtoupper($association->fetch) === 'EAGER'
             ? $entityManager->find($association->targetEntity, $id)
             : $entityManager->getReference($association->targetEntity, $id);
+    }
+
+    /**
+     * @internal
+     * @return PersistentCollection<array-key, object>
+     */
+    public function lazyCollection(object $owner, AssociationMetadata $association, EntityManager $entityManager): PersistentCollection
+    {
+        return new PersistentCollection(
+            $owner,
+            $association->propertyName,
+            static fn (): array => $entityManager->loadAssociationCollection($owner, $association),
+            strtoupper($association->fetch) === 'EXTRA_LAZY'
+                ? static fn (): int => $entityManager->countAssociationCollection($owner, $association)
+                : null,
+        );
     }
 
     /** @param array<string, mixed> $row */
