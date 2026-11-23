@@ -476,4 +476,20 @@ final class EntityManagerTest extends TestCase
         self::assertSame('article-2', $third[0]->id);
         self::assertSame('article-1', $first[0]->id);
     }
+
+    public function testDetachingANewEntityRemovesItFromTheIdentityMap(): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [MutableEmailLog::class]);
+        $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), new \wpdb());
+        $log = new MutableEmailLog('log-new', new \DateTimeImmutable(), 'queued');
+        $entityManager->persist($log);
+
+        $entityManager->detach($log);
+
+        // Its original data is empty, so the identity key could not be found that way.
+        self::assertNull($entityManager->getUnitOfWork()->tryGetById($entityManager->getClassMetadata(MutableEmailLog::class), 'log-new'));
+        $entityManager->flush();
+        self::assertSame([], $entityManager->getUnitOfWork()->managedEntities());
+    }
 }
