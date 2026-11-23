@@ -213,9 +213,8 @@ final class QueryBuilder
             $sql .= ' ' . $this->joinSql($join, $parameters);
         }
 
-        if ($this->where !== []) {
-            $sql .= ' WHERE ' . $this->compilePredicateList($this->where, $parameters);
-        }
+        $where = $this->where === [] ? null : $this->compilePredicateList($this->where, $parameters);
+        $sql .= DqlCompiler::whereClause($where, $this->entityManager->discriminatorCondition($metadata, $this->alias, $parameters));
 
         if ($this->groupBy !== []) {
             $groups = [];
@@ -318,7 +317,7 @@ final class QueryBuilder
                 $targetTable,
                 $targetAlias,
                 implode(' AND ', $conditions),
-            ), $join['condition'], $parameters);
+            ), $join, $parameters);
         }
 
         if ($association->type === AssociationMetadata::ONE_TO_MANY && $association->mappedBy !== null) {
@@ -347,7 +346,7 @@ final class QueryBuilder
                     $targetTable,
                     $targetAlias,
                     implode(' AND ', $conditions),
-                ), $join['condition'], $parameters);
+                ), $join, $parameters);
             }
         }
 
@@ -409,21 +408,28 @@ final class QueryBuilder
                     $targetTable,
                     $targetAlias,
                     implode(' AND ', $targetConditions),
-                ), $join['condition'], $parameters);
+                ), $join, $parameters);
             }
         }
 
         throw new \InvalidArgumentException(sprintf('Cannot join association "%s".', $association->propertyName));
     }
 
-    /** @param list<mixed> $parameters */
-    private function appendJoinCondition(string $sql, ?string $condition, array &$parameters): string
+    /**
+     * @param array{type: string, parentAlias: string, association: AssociationMetadata, alias: string, metadata: ClassMetadata, condition: string|null} $join
+     * @param list<mixed> $parameters
+     */
+    private function appendJoinCondition(string $sql, array $join, array &$parameters): string
     {
-        if ($condition === null || trim($condition) === '') {
-            return $sql;
+        $condition = $join['condition'];
+
+        if ($condition !== null && trim($condition) !== '') {
+            $sql .= ' AND (' . $this->compileExpression($condition, $parameters) . ')';
         }
 
-        return $sql . ' AND (' . $this->compileExpression($condition, $parameters) . ')';
+        $discriminator = $this->entityManager->discriminatorCondition($join['metadata'], $join['alias'], $parameters);
+
+        return $discriminator === null ? $sql : $sql . ' AND ' . $discriminator;
     }
 
     /** @param list<mixed> $parameters */

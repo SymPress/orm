@@ -582,6 +582,32 @@ final class EntityManager implements EntityManagerInterface
         return $this->connection()->platform()->parameterPlaceholder($value);
     }
 
+    /**
+     * The condition that restricts a query on a single-table subclass to rows of that class and its mapped
+     * subclasses, with the discriminator values bound; null for a hierarchy root or a class without inheritance.
+     *
+     * @internal
+     * @param list<mixed> $parameters
+     */
+    public function discriminatorCondition(ClassMetadata $metadata, ?string $alias, array &$parameters): ?string
+    {
+        if ($metadata->discriminatorColumn === null || $metadata->discriminatorValue === null || $metadata->rootClassName === $metadata->className) {
+            return null;
+        }
+
+        $placeholders = [];
+
+        foreach ($metadata->discriminatorMap as $value => $className) {
+            if (is_a($className, $metadata->className, true)) {
+                $placeholders[] = DqlCompiler::bindParameter($value, $this, $parameters);
+            }
+        }
+
+        $column = $this->quoteIdentifier($metadata->discriminatorColumn);
+
+        return sprintf('%s IN (%s)', $alias === null ? $column : $this->quoteIdentifier($alias) . '.' . $column, implode(', ', $placeholders));
+    }
+
     /** @internal */
     public function getConnection(): ConnectionInterface
     {
