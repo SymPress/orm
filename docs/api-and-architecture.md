@@ -37,6 +37,8 @@ When no `wpdb` instance is passed, the ORM resolves the global `$wpdb` lazily th
 
 `UnitOfWork` tracks entity state, identity-map entries, original data, scheduled insertions, explicit updates, removals, and collection snapshots. `flush()` is the only point where scheduled writes are pushed to the database.
 
+`persist()` of an unmanaged object reads the row of its identifier. Without a row the object is scheduled for insertion. With a row, `EntityHydrator::rowData()` turns it into the original data that `find()` would record for it (each value through `fromDatabase()` and back through `toDatabase()`, a foreign key through the referenced column of its target), except that a version column keeps the version the object carries, so a stale object fails the optimistic lock check. `flush()` then updates the columns that differ, with the usual update events; `prePersist` is reserved for new rows. Under `DEFERRED_EXPLICIT` change tracking this `persist()` is the explicit request when the object differs from its row. A row whose discriminator belongs to another class of the hierarchy is rejected with a `LogicException`.
+
 Flush lifecycle:
 
 1. Start a transaction when no transaction is active.

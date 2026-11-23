@@ -204,6 +204,17 @@ Calling `persist()` does not immediately call `$wpdb->insert()` or
 `$wpdb->update()`. The entity is registered in the `UnitOfWork`. The SQL write
 happens during `flush()`.
 
+`persist()` on an object that is not managed yet reads the row of its
+identifier (one `SELECT`). Without a row the object is new and inserted. With a
+row, the row becomes the object's original data and `flush()` writes what
+differs between the object and the row, also under explicit change tracking:
+`persist(new Setting('site', 'new value'))` updates the existing row, and an
+object equal to its row writes nothing. To-one foreign keys take part; an owning
+many-to-many collection that is not empty replaces the join rows, as for any
+newly attached object. A version column must carry the row's current version,
+or `flush()` throws `OptimisticLockException`. A row that belongs to another
+class of the inheritance hierarchy makes `persist()` throw a `LogicException`.
+
 Type-hint `EntityManagerInterface` in application code; the container aliases
 it to the `EntityManager` service, and decorators and test doubles can implement
 it. It holds the application API; methods that only the ORM's own classes call,
@@ -333,6 +344,9 @@ workflows:
 $logs->save($log, flush: true);
 $logs->remove($log, flush: true);
 ```
+
+`save()` is `persist()`: it inserts a new object and writes the state of an
+object whose row already exists.
 
 ## Query Builder
 
