@@ -111,6 +111,7 @@ final class OrmDatabaseTest extends TestCase
         self::assertCount(1, $rows);
         self::assertInstanceOf(EmailLog::class, $rows[0]);
         self::assertSame('compiled', $rows[0]->id);
+        self::assertSame([], $like->setMaxResults(0)->getQuery()->getResult());
         self::assertSame([], $metadata->mappingResources());
     }
 

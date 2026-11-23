@@ -431,6 +431,16 @@ final class QueryBuilderTest extends TestCase
         self::assertSame(['!', 'queued'], $compiled->parameters);
     }
 
+    public function testMaxResultsOfZeroLimitsToNoRows(): void
+    {
+        $compiled = $this->emailLogManager()->createQueryBuilder()->select('l')->from(EmailLog::class, 'l')
+            ->setMaxResults(0)
+            ->compile();
+
+        self::assertStringEndsWith('LIMIT %d', $compiled->sql);
+        self::assertSame([0], $compiled->parameters);
+    }
+
     private function emailLogManager(): EntityManager
     {
         $metadata = new MetadataFactory();

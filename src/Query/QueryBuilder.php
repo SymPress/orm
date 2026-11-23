@@ -237,7 +237,7 @@ final class QueryBuilder
 
         if ($this->maxResults !== null) {
             $sql .= ' LIMIT %d';
-            $parameters[] = max(1, $this->maxResults);
+            $parameters[] = max(0, $this->maxResults);
         }
 
         if ($this->firstResult !== null) {
