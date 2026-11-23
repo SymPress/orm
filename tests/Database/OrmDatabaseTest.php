@@ -243,6 +243,31 @@ final class OrmDatabaseTest extends TestCase
         self::assertSame(['even'], $query('2 OR 1=1'));
     }
 
+    public function testAndWhereAfterAnOrPredicateNarrowsTheResult(): void
+    {
+        $metadata = new MetadataFactory();
+        $entities = new EntityClassRegistry($metadata, classes: [Article::class, Author::class]);
+        $tool = new SchemaTool($metadata, $entities, new SchemaSqlGenerator(), $this->database);
+        self::assertTrue((new WordPressSqlExecutor($this->database))->execute($tool->getCreateSchemaSql()));
+        $manager = new EntityManager($metadata, $entities, new EntityHydrator(), $this->database);
+        $ada = new Author('ada', 'Ada');
+        $bob = new Author('bob', 'Bob');
+        $manager->persist($ada);
+        $manager->persist($bob);
+        $manager->persist(new Article('by-bob', 'x', $bob));
+        $manager->persist(new Article('by-ada', 'y', $ada));
+        $manager->flush();
+        $manager->clear();
+
+        $articles = $manager->createQueryBuilder()->select('a')->from(Article::class, 'a')
+            ->where('a.title = :x OR a.title = :y')->andWhere('a.author = :author')
+            ->setParameters(['x' => 'x', 'y' => 'y', 'author' => 'ada'])
+            ->getQuery()->getResult();
+
+        // Without parentheses the author filter applied to the second branch only and Bob's article matched too.
+        self::assertSame(['by-ada'], array_map(static fn (Article $article): string => $article->id, $articles));
+    }
+
     public function testSavepointsRollBackInnerWritesWhileCommittingOuterWrites(): void
     {
         $metadata = new MetadataFactory();
