@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.9 — 2026-11-23
+
+- Accept a literal `%` in query builder and DQL expressions that also bind parameters. `wpdb::prepare()` needs `%%`, so `LIKE 'que%'` or a DQL function emitting `DATE_FORMAT(..., '%Y-%m')` broke once the query had a parameter. Write `%` as is; code that wrote `%%` together with parameters as a workaround now gets a literal `%%`.
+- Bind parameters used in `select()` expressions. They were compiled into a throwaway list, which left placeholders without values and made `wpdb::prepare()` fail.
+- Return no rows for `setMaxResults(0)`. It compiled to `LIMIT 1` and returned one row; it now compiles to `LIMIT 0`.
+
 ## 0.3.8 — 2026-11-23
 
 - Keep unflushed changes when a managed entity is loaded again. `find()`, `findBy()`, queries and lazy collections returned the managed instance but overwrote it with the database row, so the change was lost and `flush()` wrote nothing. Only `refresh()` overwrites state now.
