@@ -14,7 +14,10 @@ use SymPress\Orm\Metadata\JoinColumnMetadata;
 
 final readonly class EntityHydrator
 {
-    /** @param array<string, mixed> $row */
+    /**
+     * @internal
+     * @param array<string, mixed> $row
+     */
     public function hydrate(ClassMetadata $metadata, array $row, ?EntityManager $entityManager = null): object
     {
         $metadata = $this->resolveDiscriminatorMetadata($metadata, $row, $entityManager);
@@ -62,7 +65,10 @@ final readonly class EntityHydrator
         return $entity;
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @internal
+     * @return array<string, mixed>
+     */
     public function extract(object $entity, ClassMetadata $metadata, ?EntityManager $entityManager = null): array
     {
         $data = [];
@@ -101,6 +107,7 @@ final readonly class EntityHydrator
         return $data;
     }
 
+    /** @internal */
     public function toDatabase(ColumnMetadata $column, mixed $value): mixed
     {
         if ($value === null) {
@@ -132,6 +139,7 @@ final readonly class EntityHydrator
         return $value;
     }
 
+    /** @internal */
     public function fromDatabase(ColumnMetadata $column, mixed $value): mixed
     {
         if ($value === null) {
@@ -179,6 +187,7 @@ final readonly class EntityHydrator
         return $value;
     }
 
+    /** @internal */
     public function assign(object $entity, string $propertyName, mixed $value): void
     {
         $reflection = new \ReflectionObject($entity);
