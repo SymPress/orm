@@ -1,16 +1,18 @@
-# Roadmap to 1.0.0
+# Roadmap
 
-Status: 0.6.2 (2026-11-24).
+Status: 1.0.0 (2026-11-24).
 
-1.0.0 freezes the contract of what the package already does: attribute mapping,
-the unit of work, repositories, the query builder with its DQL subset,
-associations, lifecycle events, schema tooling and request-scoped caching on top
-of `wpdb`. It is not a port of `doctrine/orm`. From 1.0.0 on the package follows
-Semantic Versioning: no breaking change to the public API within 1.x.
+1.0.0 froze the contract of what the package does: attribute mapping, the unit
+of work, repositories, the query builder with its DQL subset, associations,
+lifecycle events, schema tooling and request-scoped caching on top of `wpdb`. It
+is not a port of `doctrine/orm`. 1.x follows Semantic Versioning: no breaking
+change to the public API, as defined in
+[docs/backward-compatibility.md](docs/backward-compatibility.md). The decisions
+below hold for all of 1.x, and "Not in 1.0" lists what stays out for now.
 
-## Steps
+## Steps to 1.0.0
 
-Each step is one pull request. Steps with a version ship in that release.
+Each step was one pull request. Steps with a version shipped in that release.
 
 - [x] **0.3.9** Query builder: a literal `%` in expressions works together with
   bound parameters, parameters in `select()` are bound, and `setMaxResults(0)`
@@ -31,7 +33,7 @@ Each step is one pull request. Steps with a version ship in that release.
   fragment no longer binds across the `AND`.
 - [x] **0.5.4** Queries on a single-table subclass see only the rows of that
   class and its subclasses.
-- [ ] **1.0.0** Stable release.
+- [x] **1.0.0** Stable release.
 
 ## Decisions frozen for 1.x
 
