@@ -354,7 +354,12 @@ final readonly class EntityHydrator
             ?? $targetMetadata?->identifierColumn();
 
         if ($targetMetadata instanceof ClassMetadata && $referencedColumn instanceof ColumnMetadata) {
-            return $this->extract($value, $targetMetadata, $entityManager)[$referencedColumn->columnName] ?? null;
+            $targetAssociation = $targetMetadata->associationForProperty($referencedColumn->propertyName);
+
+            // Read the referenced column only; extracting the whole target recursed forever on entities referencing each other.
+            return $targetAssociation instanceof AssociationMetadata && $targetAssociation->isToOne()
+                ? $this->associationDatabaseValue($value, $targetAssociation, $referencedColumn, $entityManager)
+                : $this->toDatabase($referencedColumn, $this->readPath($value, $referencedColumn->propertyPath()));
         }
 
         return $this->readPath($value, [$referencedColumnName]);
