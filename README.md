@@ -57,8 +57,8 @@ and the explicit `wp migration adopt --retire-superseded` upgrade workflow.
 - Automatic transaction wrapping during `flush()`
 - Version columns, optimistic lock checks, and pessimistic lock helpers
 - Deferred implicit and deferred explicit change tracking
-- Hydration and extraction for scalar, date, datetime, boolean, JSON, and array
-  column values
+- Hydration and extraction for scalar, date, datetime, time, boolean, JSON, and
+  array column values
 - Query builder with entity-field-to-column translation, joins, grouping,
   join conditions, grouping, ordering, limits, offsets, object parameters, and
   array parameters
@@ -564,7 +564,9 @@ of the current implementation:
 - inheritance mapping beyond single-table inheritance, such as joined/class-table
   inheritance and table-per-class inheritance
 - Doctrine-style cache concurrency strategies beyond simple cache regions
-- complete Doctrine DQL grammar and full AST walkers
+- complete Doctrine DQL grammar: subselects, `CASE` and full AST walkers
+- a persistent second-level or query result cache; caches are request-scoped
+- a streaming `Query::toIterable()`; `wpdb` buffers the whole result set
 - cross-vendor platform abstraction beyond the current MySQL/WordPress target
 
 These can be added incrementally without changing the basic entity manager and
