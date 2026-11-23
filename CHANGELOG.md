@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.8 — 2026-11-23
+
+- Keep unflushed changes when a managed entity is loaded again. `find()`, `findBy()`, queries and lazy collections returned the managed instance but overwrote it with the database row, so the change was lost and `flush()` wrote nothing. Only `refresh()` overwrites state now.
+- Build one identity-map key for scalar, single-column and composite identifiers, compared as strings. `find()` now hits the identity map instead of always querying, and `orphanRemoval: true` deletes children removed from a loaded collection (it never did before).
+- Bind float query parameters with full precision. wpdb's `%f` rounded them to six decimals (`0.0000125` became `0.000013`) in `WHERE` and DQL `UPDATE ... SET`. `NAN` and `INF` are rejected.
+- Security: DQL `SELECT` throws `InvalidArgumentException` for parts it cannot compile (`JOIN ... ON`, `LIMIT`, a second `FROM` entity, a misspelled keyword, extra `ORDER BY` tokens) instead of dropping them and returning more rows than written. Use `JOIN ... WITH` and `setMaxResults()`.
+- Security: reject nested arrays as query parameters; wpdb bound them as `''`, so `findBy(['token' => $_GET['token']])` with `token[][]=x` searched for an empty token.
+- Hydrate int-backed `enumType` columns from wpdb strings instead of failing with a `TypeError`.
+- Discover entities whose attributes use `::class` before the class declaration, such as `#[Entity(repositoryClass: Foo::class)]`.
+- Accept WordPress table prefixes that start with a digit, such as `7x_`.
+- Do not write rows read inside an open transaction to the second-level cache. Region versions are per process; only request-scoped caches are supported (documented).
+- Add the GPL-2.0-or-later `LICENSE` file and correct the readiness and architecture docs.
+- Let Dependabot update GitHub Actions pins.
+
 ## 0.3.7 — 2026-11-16
 
 - Write second-level cache entries only after the flush transaction commits; a rollback no longer leaves uncommitted rows in the cache. Inside a caller's transaction, affected entries are evicted instead of written.
