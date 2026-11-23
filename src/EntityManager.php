@@ -171,7 +171,13 @@ final class EntityManager implements EntityManagerInterface
 
         // The row is the original data, so flush() writes what differs between the object and the row.
         if ($row !== null) {
-            $this->unitOfWork->persistExisting($entity, $metadata, $this->existingRowData($metadata, $row, $data));
+            $original = $this->existingRowData($metadata, $row, $data);
+            $this->unitOfWork->persistExisting($entity, $metadata, $original);
+
+            // persist() is the explicit request that DEFERRED_EXPLICIT change tracking waits for, if anything differs.
+            if (array_any($data, static fn (mixed $value, string $column): bool => !array_key_exists($column, $original) || $original[$column] !== $value)) {
+                $this->unitOfWork->scheduleExplicitUpdate($entity);
+            }
 
             $this->cascade($entity, $metadata, 'persist');
             return;
