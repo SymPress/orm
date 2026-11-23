@@ -122,6 +122,17 @@ final class PersistExistingRowTest extends TestCase
         self::assertSame(4, $current->version);
     }
 
+    public function testExplicitChangeTrackingWritesThePersistedState(): void
+    {
+        $this->database->rows = ['wp_sympress_mailer_logs' => [['id' => 'log-1', 'status' => 'queued']]];
+        $manager = $this->manager();
+
+        $manager->persist(new ExplicitEmailLog('log-1', 'sent'));
+        $manager->flush();
+
+        self::assertSame([['table' => 'wp_sympress_mailer_logs', 'data' => ['status' => 'sent'], 'where' => ['id' => 'log-1']]], $this->database->updated);
+    }
+
     private function manager(): EntityManager
     {
         $metadata = new MetadataFactory();
