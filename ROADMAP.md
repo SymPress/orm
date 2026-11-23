@@ -1,6 +1,6 @@
 # Roadmap to 1.0.0
 
-Status: 0.5.6 (2026-11-23).
+Status: 0.5.7 (2026-11-23).
 
 1.0.0 freezes the contract of what the package already does: attribute mapping,
 the unit of work, repositories, the query builder with its DQL subset,
