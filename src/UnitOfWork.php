@@ -232,6 +232,15 @@ final class UnitOfWork
         if ($metadata instanceof ClassMetadata) {
             $this->unmapIdentity($metadata, $data);
         }
+
+        // A new entity has no original data to find its identity key by.
+        foreach ($this->identityMap as $className => $entities) {
+            $key = array_search($entity, $entities, true);
+
+            if ($key !== false) {
+                unset($this->identityMap[$className][$key]);
+            }
+        }
     }
 
     /**
