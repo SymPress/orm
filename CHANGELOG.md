@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2 — 2026-11-23
+
+- Security: quote string parameters written directly after a `%` in query builder fragments, `Criteria` expressions and DQL strings. Affected versions: 0.3.9 to 0.5.1. Since 0.3.9 a literal `%` is escaped as `%%`, so `where('u.id %:n = 0')` or DQL `u.id %?1` compiled to `%%%s`, and `wpdb::prepare()` leaves a `%s` unquoted when a `%` stands directly before it. A string value was escaped but not quoted and became part of the SQL: `setParameter('n', '2 OR 1=1')` produced `WHERE u.id %2 OR 1=1 = 0`, in `SELECT` as well as in DQL `UPDATE` and `DELETE`. A parameter between two string literals written without spaces (`'a':n'b'`) had the same effect, because `prepare()` drops the quotes of `'%s'`. Such a placeholder is now set off by a space and quoted. Queries without a parameter directly after `%` or between two literals were not affected, and their SQL is unchanged.
+
 ## 0.5.1 — 2026-11-23
 
 - Mark internals `@internal`. From 1.0.0 on, everything not marked `@internal` is public API under Semantic Versioning; internals may change in any release. The markers are docblocks only and change no behaviour, signature or visibility.
