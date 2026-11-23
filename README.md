@@ -527,6 +527,15 @@ Recommended rules:
 - Keep table names prefix-aware by omitting `$wpdb->prefix` in `#[Entity]`.
 - Use migrations for schema changes instead of ad-hoc runtime table changes.
 
+## Backward Compatibility
+
+From 1.0.0 on the package follows Semantic Versioning: everything not marked
+`@internal` is public API, and breaking changes ship only in a major release.
+Deprecated features trigger `E_USER_DEPRECATED` in a minor release before they
+are removed. [docs/backward-compatibility.md](docs/backward-compatibility.md)
+defines what counts as a breaking change, and [UPGRADE.md](UPGRADE.md) lists
+the changes needed to upgrade.
+
 ## Current Limitations
 
 The package is intentionally small and pragmatic. These features are not part
