@@ -1,6 +1,6 @@
 # Roadmap to 1.0.0
 
-Status: 0.5.1 (2026-11-23).
+Status: 0.5.2 (2026-11-23).
 
 1.0.0 freezes the contract of what the package already does: attribute mapping,
 the unit of work, repositories, the query builder with its DQL subset,
@@ -26,6 +26,7 @@ Each step is one pull request. Steps with a version ship in that release.
 - [x] **0.5.1** Internals are marked `@internal`. Everything else is public API.
 - [x] Backward-compatibility policy, deprecation path, `UPGRADE.md`,
   `SECURITY.md` and the frozen column type catalog.
+- [x] **0.5.2** Security: a string parameter directly after `%` stays quoted.
 - [ ] **1.0.0** Stable release.
 
 ## Decisions frozen for 1.x
