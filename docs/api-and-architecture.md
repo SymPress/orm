@@ -31,7 +31,7 @@ $entityManager->flush();
 
 When no `wpdb` instance is passed, the ORM resolves the global `$wpdb` lazily through `ConnectionProvider` and `WpdbConnection`.
 
-`SymPress\Orm\EntityManagerInterface` is the type for consumers, decorators and test doubles; `EntityManager` implements it, and the container aliases the interface to the public `EntityManager` service. The interface holds the application API: metadata, repositories, `find()`, `persist()`, `remove()`, `flush()`, the identity-map and state methods, `refresh()`, `getReference()`, `lock()`, `transactional()`, the unit of work and event manager, query creation, DQL functions, output walkers and second-level cache eviction. Plumbing that only the ORM's own classes call stays on `EntityManager`: `registerManaged()`, `tablePrefix()`, `tableName()`, `quoteIdentifier()`, `parameterPlaceholder()`, `compileDqlFunctions()`, `applyOutputWalkers()`, `getIdentifierValue()`, `loadAssociationCollection()`, `countAssociationCollection()` and `getConnection()`. ORM internals (`Repository`, `QueryBuilder`, `Query`, `EntityHydrator`, `DqlCompiler`, `UnitOfWork`, collections) therefore keep the concrete type. Event args declare the interface in `getEntityManager()`; the object is the `EntityManager`.
+`SymPress\Orm\EntityManagerInterface` is the type for consumers, decorators and test doubles; `EntityManager` implements it, and the container aliases the interface to the public `EntityManager` service. The interface holds the application API: metadata, repositories, `find()`, `persist()`, `remove()`, `flush()`, the identity-map and state methods, `refresh()`, `getReference()`, `lock()`, `transactional()`, the unit of work and event manager, query creation, DQL functions, output walkers and second-level cache eviction. Plumbing that only the ORM's own classes call stays on `EntityManager`: `registerManaged()`, `tablePrefix()`, `tableName()`, `quoteIdentifier()`, `parameterPlaceholder()`, `compileDqlFunctions()`, `applyOutputWalkers()`, `getIdentifierValue()`, `loadAssociationCollection()`, `countAssociationCollection()` and `getConnection()`. The ORM classes that call this plumbing (`Repository`, `QueryBuilder`, `Query`, `EntityHydrator`, `DqlCompiler`, `UnitOfWork`, collections) therefore take the concrete type. The plumbing methods are marked `@internal`. Event args declare the interface in `getEntityManager()`; the object is the `EntityManager`.
 
 ### UnitOfWork
 
@@ -246,11 +246,13 @@ For schema updates, destructive drops are disabled by default to protect existin
 
 ## Console and Migration Integration
 
-The package provides console commands for schema SQL and migration diffs:
+The package provides console commands for schema SQL and migration diffs. The
+command names, arguments and options are the contract; the command classes are
+internal:
 
-- `SchemaSqlCommand`
-- `MigrationDiffCommand`
-- `MappingInfoCommand`
+- `orm:schema:sql`
+- `orm:migrations:diff`
+- `orm:mapping:info`
 
 `--destructive` enables column modifications, replacement indexes and drop SQL for schema diffs when explicitly requested. Existing column/index definitions are preserved by default.
 
@@ -271,7 +273,7 @@ Migration integration is implemented by:
 
 ## Quality Gates
 
-Run these commands from `packages/orm`:
+Run these commands from the package root:
 
 ```bash
 composer cs
@@ -328,6 +330,10 @@ Table lookups escape SQL LIKE wildcards through `wpdb::esc_like()`.
 Nested transactions use savepoints. Inner rollback preserves the outer
 transaction; committing the outer transaction cannot accidentally commit rolled
 back inner work. Failed transaction control statements raise an error.
+The nesting depth is counted per connection instance (`WpdbConnection`), so a
+transaction opened directly through `$wpdb->query('START TRANSACTION')` is
+invisible to it: `flush()` then sends its own `START TRANSACTION`, which makes
+MySQL commit the open one.
 `composer tests:database` verifies these contracts with real WordPress `wpdb`
 and a disposable MariaDB database configured through `WORDPRESS_DB_*`.
 The database matrix also runs MySQL 8.4. Its upgrade fixture executes the immutable
