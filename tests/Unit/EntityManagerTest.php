@@ -76,6 +76,26 @@ final class EntityManagerTest extends TestCase
         self::assertSame(['id' => 'log-1'], $this->database->updated[0]['where']);
     }
 
+    public function testReloadingManagedEntityKeepsUnflushedChanges(): void
+    {
+        $log = new MutableEmailLog('log-1', new \DateTimeImmutable('2026-06-13 10:00:00'), 'queued');
+        $this->entityManager->persist($log);
+        $this->entityManager->flush();
+        $log->status = 'sent';
+        $this->database->resultRows = [
+            ['id' => 'log-1', 'created_at' => '2026-06-13 10:00:00', 'status' => 'queued'],
+        ];
+
+        self::assertSame($log, $this->entityManager->find(MutableEmailLog::class, 'log-1'));
+        self::assertSame($log, $this->entityManager->find(MutableEmailLog::class, ['id' => 'log-1']));
+        self::assertSame([$log], $this->entityManager->getRepository(MutableEmailLog::class)->findBy(['status' => 'queued']));
+        self::assertSame('sent', $log->status);
+
+        $this->entityManager->flush();
+
+        self::assertSame(['status' => 'sent'], $this->database->updated[0]['data']);
+    }
+
     public function testIdentityMapKeyDoesNotDependOnIdentifierType(): void
     {
         $metadataFactory = new MetadataFactory();
@@ -91,6 +111,18 @@ final class EntityManagerTest extends TestCase
         self::assertSame($user, $entityManager->find(NumericUser::class, 7));
         self::assertSame($tenant, $entityManager->find(Tenant::class, ['code' => 'main', 'tenantId' => 't-1']));
         self::assertSame($tenant, $entityManager->getReference(Tenant::class, ['tenant_id' => 't-1', 'code' => 'main']));
+    }
+
+    public function testLoadingRowInitializesExistingReference(): void
+    {
+        $reference = $this->entityManager->getReference(MutableEmailLog::class, 'log-1');
+        $this->database->resultRows = [
+            ['id' => 'log-1', 'created_at' => '2026-06-13 10:00:00', 'status' => 'queued'],
+        ];
+
+        self::assertSame([$reference], $this->entityManager->getRepository(MutableEmailLog::class)->findBy(['status' => 'queued']));
+        self::assertInstanceOf(MutableEmailLog::class, $reference);
+        self::assertSame('queued', $reference->status);
     }
 
     public function testOrphanRemovalDeletesChildRemovedFromCollection(): void

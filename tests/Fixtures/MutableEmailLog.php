@@ -16,7 +16,7 @@ final class MutableEmailLog
         #[Column(type: 'string', length: 32)]
         public string $id,
         #[Column(type: 'datetime')]
-        public \DateTimeImmutable $createdAt,
+        public \DateTimeInterface $createdAt,
         #[Column(type: 'string', length: 20)]
         public string $status,
     ) {
