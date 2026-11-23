@@ -315,6 +315,27 @@ final class OrmDatabaseTest extends TestCase
         self::assertSame(['v1'], $this->database->get_col('SELECT id FROM wp_sympress_vehicles'));
     }
 
+    public function testPersistingANewObjectForAnExistingRowWritesItsState(): void
+    {
+        $metadata = new MetadataFactory();
+        $entities = new EntityClassRegistry($metadata, classes: [Article::class, Author::class]);
+        $tool = new SchemaTool($metadata, $entities, new SchemaSqlGenerator(), $this->database);
+        self::assertTrue((new WordPressSqlExecutor($this->database))->execute($tool->getCreateSchemaSql()));
+        $manager = new EntityManager($metadata, $entities, new EntityHydrator(), $this->database);
+        $author = new Author('ada', 'Ada');
+        $manager->persist($author);
+        $manager->persist(new Article('a1', 'Old', $author));
+        $manager->flush();
+        $manager->clear();
+
+        $manager->persist(new Article('a1', 'New', $manager->getReference(Author::class, 'ada')));
+        $manager->flush();
+        $manager->clear();
+
+        self::assertSame('New', $manager->find(Article::class, 'a1')?->title);
+        self::assertSame('1', $this->database->get_var('SELECT COUNT(*) FROM wp_sympress_articles'));
+    }
+
     public function testSavepointsRollBackInnerWritesWhileCommittingOuterWrites(): void
     {
         $metadata = new MetadataFactory();
