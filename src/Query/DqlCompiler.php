@@ -25,18 +25,20 @@ final readonly class DqlCompiler
         array $parameters = [],
     ): QueryBuilder|CompiledQuery {
 
-        $dql = trim(preg_replace('/\s+/', ' ', $dql) ?? $dql);
+        // Keywords, whitespace and commas are only looked for outside literals; each part is restored before use.
+        $mask = LiteralMask::mask($dql);
+        $dql = trim(preg_replace('/\s+/', ' ', $mask->code) ?? $mask->code);
 
         if (preg_match('/^SELECT\s+(.+?)\s+FROM\s+([a-zA-Z_\\\\][a-zA-Z0-9_\\\\]*)\s+([a-zA-Z_][a-zA-Z0-9_]*)(.*)$/i', $dql, $matches) === 1) {
-            return self::compileSelect($matches, $entityManager, $entities, $parameters);
+            return self::compileSelect($matches, $mask, $entityManager, $entities, $parameters);
         }
 
         if (preg_match('/^UPDATE\s+([a-zA-Z_\\\\][a-zA-Z0-9_\\\\]*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+))?$/i', $dql, $matches) === 1) {
-            return self::compileUpdate($matches, $entityManager, $entities, $parameters);
+            return self::compileUpdate(array_map($mask->restore(...), $matches), $entityManager, $entities, $parameters);
         }
 
         if (preg_match('/^DELETE\s+FROM\s+([a-zA-Z_\\\\][a-zA-Z0-9_\\\\]*)\s+([a-zA-Z_][a-zA-Z0-9_]*)(?:\s+WHERE\s+(.+))?$/i', $dql, $matches) === 1) {
-            return self::compileDelete($matches, $entityManager, $entities, $parameters);
+            return self::compileDelete(array_map($mask->restore(...), $matches), $entityManager, $entities, $parameters);
         }
 
         throw new \InvalidArgumentException('Unsupported DQL query. SELECT, UPDATE and DELETE are supported.');
@@ -48,6 +50,7 @@ final readonly class DqlCompiler
      */
     private static function compileSelect(
         array $matches,
+        LiteralMask $mask,
         EntityManager $entityManager,
         EntityClassRegistry $entities,
         array $parameters,
@@ -55,13 +58,19 @@ final readonly class DqlCompiler
 
         $builder = $entityManager
             ->createQueryBuilder()
-            ->select(...array_map('trim', explode(',', $matches[1])))
+            ->select(...self::splitList($matches[1], $mask))
             ->from(self::entityClass($matches[2], $entities), $matches[3])
             ->setParameters($parameters);
 
-        self::compileTail(trim($matches[4]), $builder);
+        self::compileTail(trim($matches[4]), $mask, $builder);
 
         return $builder;
+    }
+
+    /** @return list<string> the trimmed comma-separated parts of masked code, with their literals restored */
+    private static function splitList(string $code, LiteralMask $mask): array
+    {
+        return array_map(static fn (string $part): string => $mask->restore(trim($part)), explode(',', $code));
     }
 
     /**
@@ -125,7 +134,7 @@ final readonly class DqlCompiler
         return new CompiledQuery(self::unpreparedSql($sql, $values), $values);
     }
 
-    private static function compileTail(string $tail, QueryBuilder $builder): void
+    private static function compileTail(string $tail, LiteralMask $mask, QueryBuilder $builder): void
     {
         if ($tail === '') {
             return;
@@ -135,33 +144,34 @@ final readonly class DqlCompiler
         $tail = $joins['tail'];
 
         foreach ($joins['joins'] as $join) {
+            $condition = $join['condition'] === null ? null : $mask->restore($join['condition']);
             $join['type'] === 'LEFT'
-                ? $builder->leftJoin($join['path'], $join['alias'], $join['condition'])
-                : $builder->join($join['path'], $join['alias'], $join['condition']);
+                ? $builder->leftJoin($join['path'], $join['alias'], $condition)
+                : $builder->join($join['path'], $join['alias'], $condition);
         }
 
-        $clauses = self::clauses($tail);
+        $clauses = self::clauses($tail, $mask);
 
         if (isset($clauses['WHERE'])) {
-            $builder->where($clauses['WHERE']);
+            $builder->where($mask->restore($clauses['WHERE']));
         }
 
         if (isset($clauses['GROUP BY'])) {
-            foreach (explode(',', $clauses['GROUP BY']) as $groupBy) {
-                $builder->addGroupBy(trim($groupBy));
+            foreach (self::splitList($clauses['GROUP BY'], $mask) as $groupBy) {
+                $builder->addGroupBy($groupBy);
             }
         }
 
         if (isset($clauses['HAVING'])) {
-            $builder->having($clauses['HAVING']);
+            $builder->having($mask->restore($clauses['HAVING']));
         }
 
         if (isset($clauses['ORDER BY'])) {
-            foreach (explode(',', $clauses['ORDER BY']) as $orderClause) {
-                $parts = preg_split('/\s+/', trim($orderClause)) ?: [];
+            foreach (self::splitList($clauses['ORDER BY'], $mask) as $orderClause) {
+                $parts = preg_split('/\s+/', $orderClause) ?: [];
 
                 if (count($parts) > 2) {
-                    throw new \InvalidArgumentException(sprintf('Unsupported DQL ORDER BY item "%s".', trim($orderClause)));
+                    throw new \InvalidArgumentException(sprintf('Unsupported DQL ORDER BY item "%s".', $orderClause));
                 }
 
                 $sort = $parts[0] ?? '';
@@ -195,7 +205,7 @@ final readonly class DqlCompiler
     }
 
     /** @return array<string, string> */
-    private static function clauses(string $tail): array
+    private static function clauses(string $tail, LiteralMask $mask): array
     {
         $keywords = ['WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'];
         /** @var array<string, int> $positions */
@@ -214,7 +224,7 @@ final readonly class DqlCompiler
         if ($tail !== '' && $first !== 0) {
             throw new \InvalidArgumentException(sprintf(
                 'Unsupported DQL near "%s"; SELECT supports JOIN ... WITH, WHERE, GROUP BY, HAVING and ORDER BY.',
-                $first === false ? $tail : trim(substr($tail, 0, $first)),
+                $mask->restore($first === false ? $tail : trim(substr($tail, 0, $first))),
             ));
         }
 

@@ -15,6 +15,51 @@ use SymPress\Orm\Tests\Fixtures\EmailLog;
 
 final class DqlLiteralTest extends TestCase
 {
+    public function testDqlSelectSplitsClausesOutsideLiterals(): void
+    {
+        $sql = $this->manager()->createQuery(
+            "SELECT a FROM Article a JOIN a.author u WITH u.name = 'x WHERE y' WHERE a.title = 'p JOIN a.author q GROUP BY a.id HAVING FROM'"
+            . ' AND a.id = :id ORDER BY a.title DESC',
+            ['id' => 'a-1'],
+        )->getSQL();
+
+        self::assertStringContainsString("AND `u`.`name` = 'x WHERE y' WHERE", $sql);
+        self::assertStringEndsWith(
+            "WHERE `a`.`title` = 'p JOIN a.author q GROUP BY a.id HAVING FROM' AND `a`.`id` = 'a-1' ORDER BY `a`.`title` DESC",
+            $sql,
+        );
+    }
+
+    public function testDqlSelectKeepsOrderByInsideLiteral(): void
+    {
+        self::assertStringEndsWith(
+            "WHERE `l`.`status` = 'x ORDER BY y' ORDER BY `l`.`created_at` DESC",
+            $this->manager()->createQuery("SELECT l FROM EmailLog l WHERE l.status = 'x ORDER BY y' ORDER BY l.createdAt DESC")->getSQL(),
+        );
+    }
+
+    public function testDqlUpdateAndDeleteSplitOutsideLiterals(): void
+    {
+        $manager = $this->manager();
+
+        self::assertSame(
+            "UPDATE `wp_sympress_mailer_logs` `l` SET `l`.`status` = 'a WHERE b' WHERE `l`.`id` = 'log-1'",
+            $manager->createQuery("UPDATE EmailLog l SET l.status = 'a WHERE b' WHERE l.id = :id", ['id' => 'log-1'])->getSQL(),
+        );
+        self::assertSame(
+            "DELETE `l` FROM `wp_sympress_mailer_logs` `l` WHERE `l`.`status` = 'SET x FROM y WHERE z'",
+            $manager->createQuery("DELETE FROM EmailLog l WHERE l.status = 'SET x FROM y WHERE z'")->getSQL(),
+        );
+    }
+
+    public function testDqlKeepsWhitespaceInsideLiterals(): void
+    {
+        self::assertStringEndsWith(
+            "WHERE `l`.`status` = 'a  b\tc' AND `l`.`id` = 'x'",
+            $this->manager()->createQuery("SELECT l FROM EmailLog l   WHERE l.status = 'a  b\tc'\n AND l.id = 'x'")->getSQL(),
+        );
+    }
+
     public function testFieldPathsAndParametersInsideLiteralsAreLeftAlone(): void
     {
         $manager = $this->manager();
