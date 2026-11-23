@@ -40,7 +40,7 @@ and the explicit `wp migration adopt --retire-superseded` upgrade workflow.
 - Cache mapping with `#[Cache]` on entities and associations
 - To-one and to-many association mapping with simple or composite join columns
   and join tables
-- Lazy to-many collections
+- Lazy to-many collections and lazy to-one references (native PHP lazy objects)
 - Cascade persist/remove and owning many-to-many join-table synchronization
 - Lifecycle callbacks and event listeners for common ORM lifecycle events
 - Entity metadata discovery from active SymPress kernel bundles
@@ -52,7 +52,7 @@ and the explicit `wp migration adopt --retire-superseded` upgrade workflow.
 - CRUD-oriented `Repository`
 - `find()`, `findAll()`, `findBy()`, and `findOneBy()`
 - Explicit `remove()`, `detach()`, `clear()`, `close()`, `refresh()`, and `contains()`
-- Lazy entity references with `getReference()`
+- Lazy entity references with `getReference()` that load on first access
 - Transaction helper with `transactional()`
 - Automatic transaction wrapping during `flush()`
 - Version columns, optimistic lock checks, and pessimistic lock helpers
@@ -242,6 +242,14 @@ state.
 $entityManager->detach($log);
 $entityManager->clear();
 ```
+
+`getReference()` and to-one associations return a native PHP lazy object that
+holds only the identifier. Reading the identifier does not query; the first
+access to any other property loads the row. A missing row throws
+`EntityNotFoundException`. Each reference costs one query, so looping over
+`$article->author->name` issues one query per author (N+1); join the
+association or load the authors with one query first, and the references are
+filled from those rows.
 
 ## Repositories
 
@@ -515,7 +523,8 @@ Recommended rules:
 The package is intentionally small and pragmatic. These features are not part
 of the current implementation:
 
-- lazy subclass proxies for to-one associations
+- lazy references to an inheritance root with subclasses; they load eagerly
+  because the row may be a subclass
 - inheritance mapping beyond single-table inheritance, such as joined/class-table
   inheritance and table-per-class inheritance
 - Doctrine-style cache concurrency strategies beyond simple cache regions
