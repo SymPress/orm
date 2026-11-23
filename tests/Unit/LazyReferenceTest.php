@@ -126,6 +126,24 @@ final class LazyReferenceTest extends TestCase
         self::assertSame([['table' => 'wp_sympress_tracks', 'where' => ['id' => 'track-1']]], $this->database->deleted);
     }
 
+    public function testFlushSkipsFlushCallbacksOfUnloadedReferences(): void
+    {
+        $article = $this->entityManager->find(Article::class, 'article-1');
+        self::assertInstanceOf(Article::class, $article);
+        $author = new Author('author-2', 'Grace');
+        $this->entityManager->persist($author);
+
+        $this->entityManager->flush();
+        // WordPress tables have no foreign keys, so a reference may point at a deleted row.
+        $this->database->rows['wp_sympress_authors'] = [];
+        $this->entityManager->flush();
+
+        self::assertTrue(self::isLazy($article->author));
+        self::assertCount(1, $this->database->selects);
+        self::assertTrue($this->entityManager->isOpen());
+        self::assertSame(4, $author->flushCalls, 'Loaded entities still get preFlush and postFlush.');
+    }
+
     public function testRemovingReferenceDeletesByIdentifierWithoutLoading(): void
     {
         // Cascading the orphan-removal collection would read it and load the playlist.

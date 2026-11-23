@@ -10,7 +10,9 @@ use SymPress\Orm\Mapping\Entity;
 use SymPress\Orm\Mapping\HasLifecycleCallbacks;
 use SymPress\Orm\Mapping\Id;
 use SymPress\Orm\Mapping\OneToMany;
+use SymPress\Orm\Mapping\PostFlush;
 use SymPress\Orm\Mapping\PostLoad;
+use SymPress\Orm\Mapping\PreFlush;
 use SymPress\Orm\Mapping\PrePersist;
 
 #[Entity(table: 'sympress_authors')]
@@ -19,6 +21,7 @@ final class Author
 {
     public int $prePersistCalls = 0;
     public int $postLoadCalls = 0;
+    public int $flushCalls = 0;
 
     public function __construct(
         #[Id]
@@ -41,5 +44,12 @@ final class Author
     public function onPostLoad(): void
     {
         $this->postLoadCalls++;
+    }
+
+    #[PreFlush]
+    #[PostFlush]
+    public function onFlush(): void
+    {
+        $this->flushCalls++;
     }
 }
