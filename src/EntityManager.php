@@ -459,7 +459,10 @@ final class EntityManager implements EntityManagerInterface
         }
     }
 
-    /** @param array<string, mixed> $row */
+    /**
+     * @internal
+     * @param array<string, mixed> $row
+     */
     public function registerManaged(object $entity, ClassMetadata $metadata, array $row): object
     {
         $metadata = $this->getClassMetadata($entity::class);
@@ -549,11 +552,13 @@ final class EntityManager implements EntityManagerInterface
         return $this->createNativeQuery($compiled);
     }
 
+    /** @internal */
     public function tablePrefix(): string
     {
         return $this->connection()->tablePrefix();
     }
 
+    /** @internal */
     public function tableName(string $tableName): string
     {
         $prefix = $this->tablePrefix();
@@ -565,16 +570,19 @@ final class EntityManager implements EntityManagerInterface
         return $prefix . $tableName;
     }
 
+    /** @internal */
     public function quoteIdentifier(string $identifier): string
     {
         return $this->connection()->platform()->quoteIdentifier($identifier);
     }
 
+    /** @internal */
     public function parameterPlaceholder(mixed $value): string
     {
         return $this->connection()->platform()->parameterPlaceholder($value);
     }
 
+    /** @internal */
     public function getConnection(): ConnectionInterface
     {
         return $this->connection();
@@ -590,11 +598,13 @@ final class EntityManager implements EntityManagerInterface
         $this->dqlExtensions->addOutputWalker($walker);
     }
 
+    /** @internal */
     public function compileDqlFunctions(string $expression): string
     {
         return $this->dqlExtensions->compileFunctions($expression);
     }
 
+    /** @internal */
     public function applyOutputWalkers(string $sql): string
     {
         return $this->dqlExtensions->applyOutputWalkers($sql);
@@ -618,12 +628,16 @@ final class EntityManager implements EntityManagerInterface
         $this->bumpAssociationRegionsFor($metadata);
     }
 
+    /** @internal */
     public function getIdentifierValue(object $entity): mixed
     {
         return $this->identifierValue($entity, $this->getClassMetadata($entity::class));
     }
 
-    /** @return list<object> */
+    /**
+     * @internal
+     * @return list<object>
+     */
     public function loadAssociationCollection(object $owner, AssociationMetadata $association): array
     {
         $ownerMetadata = $this->getClassMetadata($owner::class);
@@ -644,6 +658,7 @@ final class EntityManager implements EntityManagerInterface
         return $results;
     }
 
+    /** @internal */
     public function countAssociationCollection(object $owner, AssociationMetadata $association): int
     {
         return match ($association->type) {
