@@ -6,6 +6,7 @@ namespace SymPress\Orm\Metadata;
 
 final readonly class JoinColumnMetadata
 {
+    /** @internal */
     public function __construct(
         public string $name,
         public string $referencedColumnName = 'id',

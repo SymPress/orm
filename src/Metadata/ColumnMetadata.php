@@ -7,6 +7,7 @@ namespace SymPress\Orm\Metadata;
 final readonly class ColumnMetadata
 {
     /**
+     * @internal
      * @param scalar|null $default
      * @param array<string, scalar|null> $options
      * @param list<string> $propertyPath

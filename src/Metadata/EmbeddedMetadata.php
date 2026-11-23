@@ -7,6 +7,7 @@ namespace SymPress\Orm\Metadata;
 final readonly class EmbeddedMetadata
 {
     /**
+     * @internal
      * @param class-string $className
      * @param list<ColumnMetadata> $columns
      */

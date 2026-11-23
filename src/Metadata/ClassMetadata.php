@@ -7,6 +7,7 @@ namespace SymPress\Orm\Metadata;
 final readonly class ClassMetadata
 {
     /**
+     * @internal
      * @param class-string $className
      * @param class-string|null $repositoryClass
      * @param array<string, ColumnMetadata> $columnsByProperty
