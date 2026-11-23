@@ -32,7 +32,7 @@ use SymPress\Orm\Query\DqlExtensionRegistry;
 use SymPress\Orm\Query\Query;
 use SymPress\Orm\Query\QueryBuilder;
 
-final class EntityManager
+final class EntityManager implements EntityManagerInterface
 {
     /** @var array<class-string, Repository> */
     private array $repositories = [];

@@ -53,6 +53,7 @@ if (!$hit) {
     $files = $kernel->configureContainer($c->builder(), $c, $bundles);
     $kernel->createRuntimeContainer($c, $bundles, $files);
 }
+if ($c->get(SymPress\Orm\EntityManagerInterface::class) !== $c->get(SymPress\Orm\EntityManager::class)) { throw new RuntimeException('EntityManagerInterface alias'); }
 $r = $c->get(SymPress\Orm\Metadata\EntityClassRegistry::class);
 $f = $c->get(SymPress\Orm\Metadata\MetadataFactory::class);
 $tables = [];
