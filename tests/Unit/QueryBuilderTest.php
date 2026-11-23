@@ -205,6 +205,18 @@ final class QueryBuilderTest extends TestCase
         $entityManager->createQuery('UPDATE EmailLog l SET l.status = :status');
     }
 
+    public function testRepositoryRejectsNestedArrayParameters(): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [EmailLog::class]);
+        $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), new \wpdb());
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        // e.g. ?status[][]=x reaching findBy() unchecked; wpdb would bind the inner array as ''.
+        $entityManager->getRepository(EmailLog::class)->findBy(['status' => [['x']]]);
+    }
+
     public function testDqlCompilerRejectsUnknownFields(): void
     {
         $metadataFactory = new MetadataFactory();
