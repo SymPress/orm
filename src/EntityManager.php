@@ -48,6 +48,9 @@ final class EntityManager implements EntityManagerInterface
     /** @var array<string, true> */
     private array $cascadeStack = [];
 
+    /** @var list<object>|null */
+    private ?array $pendingRemovals = null;
+
     /** @var array<class-string, object> */
     private array $entityListenerInstances = [];
 
@@ -181,10 +184,26 @@ final class EntityManager implements EntityManagerInterface
         // Cascades, orphan removal and the remove events need the whole entity, and a missing row must fail here.
         self::initialize($entity);
 
-        $metadata = $this->getClassMetadata($entity::class);
-        $this->dispatchLifecycleEvent(Events::PRE_REMOVE, $entity, $metadata);
-        $this->cascade($entity, $metadata, 'remove');
-        $this->unitOfWork->remove($entity);
+        // The outermost remove() schedules its whole cascade only once every part of it succeeded.
+        $outermost = $this->pendingRemovals === null;
+        $this->pendingRemovals ??= [];
+
+        try {
+            $metadata = $this->getClassMetadata($entity::class);
+            $this->dispatchLifecycleEvent(Events::PRE_REMOVE, $entity, $metadata);
+            $this->cascade($entity, $metadata, 'remove');
+            $this->pendingRemovals[] = $entity;
+
+            if ($outermost) {
+                foreach ($this->pendingRemovals as $removal) {
+                    $this->unitOfWork->remove($removal);
+                }
+            }
+        } finally {
+            if ($outermost) {
+                $this->pendingRemovals = null;
+            }
+        }
     }
 
     public function flush(): void
