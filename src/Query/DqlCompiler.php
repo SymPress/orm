@@ -158,7 +158,12 @@ final readonly class DqlCompiler
 
         if (isset($clauses['ORDER BY'])) {
             foreach (explode(',', $clauses['ORDER BY']) as $orderClause) {
-                $parts = preg_split('/\s+/', trim($orderClause));
+                $parts = preg_split('/\s+/', trim($orderClause)) ?: [];
+
+                if (count($parts) > 2) {
+                    throw new \InvalidArgumentException(sprintf('Unsupported DQL ORDER BY item "%s".', trim($orderClause)));
+                }
+
                 $sort = $parts[0] ?? '';
 
                 if ($sort !== '') {
@@ -203,6 +208,16 @@ final readonly class DqlCompiler
         }
 
         asort($positions);
+        $first = reset($positions);
+
+        // Text before the first known clause would otherwise be dropped and broaden the query.
+        if ($tail !== '' && $first !== 0) {
+            throw new \InvalidArgumentException(sprintf(
+                'Unsupported DQL near "%s"; SELECT supports JOIN ... WITH, WHERE, GROUP BY, HAVING and ORDER BY.',
+                $first === false ? $tail : trim(substr($tail, 0, $first)),
+            ));
+        }
+
         $clauses = [];
         $ordered = array_keys($positions);
 

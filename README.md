@@ -363,7 +363,7 @@ Supported DQL subset:
 - one alias
 - `SELECT alias`
 - `JOIN`, `INNER JOIN`, and `LEFT JOIN` over mapped to-one, one-to-many, and
-  many-to-many associations
+  many-to-many associations, with an optional `WITH` condition
 - `WHERE` expressions using mapped fields
 - named parameters and positional parameters
 - `GROUP BY` and `HAVING`
@@ -381,6 +381,11 @@ $entityManager
     )
     ->execute();
 ```
+
+A `SELECT` that contains anything else, such as `JOIN ... ON`, `LIMIT`, a second
+`FROM` entity, or a misspelled keyword, throws `InvalidArgumentException` instead
+of being compiled without that part. Use `setMaxResults()` on the query builder
+for limits.
 
 This is not a full Doctrine DQL parser. Subqueries, partial object hydration,
 full AST walkers, and the complete Doctrine grammar are not part of this package
