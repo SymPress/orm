@@ -9,6 +9,7 @@ use SymPress\Orm\EntityManagerInterface;
 
 final readonly class OnClearEventArgs
 {
+    /** @internal */
     public function __construct(
         private EntityManager $entityManager,
         private ?string $entityClass = null,
