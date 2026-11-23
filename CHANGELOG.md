@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.11 — 2026-11-23
+
+- Security: reject `;`, subselects (`SELECT`, `TABLE`), `UNION`, `INTERSECT`, `EXCEPT`, SQL comments (`/*`, `#`, `--` before whitespace) and unterminated string literals in query builder fragments (`select()`, `where()`, `having()`, `groupBy()`, join conditions), `Criteria` expressions and DQL strings. They were passed through into the SQL; a comment silently cut off whatever was appended after the fragment, such as a later `andWhere()` filter, `ORDER BY` or `LIMIT`. They now throw `InvalidArgumentException`. Inside string literals they are still allowed, and `a--1` stays arithmetic.
+- Keep string literals intact in DQL and query builder expressions. DQL split the statement at keywords inside literals (`l.subject = 'x ORDER BY y'`) and collapsed their whitespace, and field paths, `:name`/`?1` parameters and DQL functions were rewritten inside literals (`'see l.status'`, `'a :b'`). Literals now reach SQL byte for byte; a literal `%` is still escaped for `wpdb::prepare()`.
+
 ## 0.3.10 — 2026-11-23
 
 - Hydrate `time` and `time_immutable` columns as `\DateTime` and `\DateTimeImmutable` and write them back as `H:i:s`. They came back as the raw string, so a `DateTime` property failed with a `TypeError`, and a `DateTime` value was written as `''`. Properties typed `string` for these columns have to change to `\DateTime` or `\DateTimeImmutable`.
