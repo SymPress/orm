@@ -244,7 +244,10 @@ if ($log !== null) {
 }
 ```
 
-`remove()` schedules a deletion. The row is deleted during `flush()`.
+`remove()` schedules a deletion. The row is deleted during `flush()`. An
+unloaded reference from `getReference()` is loaded first, so cascades and
+orphan removal reach its associations; a missing row throws
+`EntityNotFoundException`. Use DQL `DELETE` to delete without loading.
 
 If a new entity is persisted and then removed before the next flush, the pending
 insertion is cancelled.
