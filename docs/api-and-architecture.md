@@ -173,7 +173,7 @@ Owning many-to-many collections are synchronized during `flush()`. The ORM compa
 
 ORM internals read only the identifier of an unloaded reference: change detection, cascades, foreign-key extraction, `contains()`, `detach()`, `clear()` and `remove()` neither load it nor query. Cascades and orphan removal therefore do not walk its associations; `remove()` of an unloaded reference deletes only its own row.
 
-A reference to an inheritance root whose discriminator map lists subclasses is loaded eagerly, because the row may belong to a subclass (or the root may be abstract) and a lazy object cannot change its class. A reference detached by `clear()`, `detach()` or `close()` keeps its identifier and throws a `LogicException` on first access to another property instead of loading; load the entity again with `find()`.
+A reference to an inheritance root whose discriminator map lists subclasses is loaded eagerly, because the row may belong to a subclass (or the root may be abstract) and a lazy object cannot change its class. If that load (or a `fetch: EAGER` association) reaches a row that is still being hydrated, as in rows referencing each other or themselves, it gets a lazy reference of that row's concrete class, which is filled when the row is complete, so every row is selected once. A reference detached by `clear()`, `detach()` or `close()` keeps its identifier and throws a `LogicException` on first access to another property instead of loading; load the entity again with `find()`.
 
 ## Events
 
