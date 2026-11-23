@@ -15,8 +15,12 @@ use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Tests\Fixtures\Article;
 use SymPress\Orm\Tests\Fixtures\Author;
+use SymPress\Orm\Tests\Fixtures\Car;
 use SymPress\Orm\Tests\Fixtures\ExplicitEmailLog;
+use SymPress\Orm\Tests\Fixtures\Garage;
+use SymPress\Orm\Tests\Fixtures\SportsCar;
 use SymPress\Orm\Tests\Fixtures\TypeCatalogEntity;
+use SymPress\Orm\Tests\Fixtures\Vehicle;
 use SymPress\Orm\Tests\Fixtures\VersionedEmailLog;
 
 final class PersistExistingRowTest extends TestCase
@@ -174,11 +178,29 @@ final class PersistExistingRowTest extends TestCase
         self::assertSame([['table' => 'wp_sympress_mailer_logs', 'data' => ['status' => 'sent'], 'where' => ['id' => 'log-1']]], $this->database->updated);
     }
 
+    public function testRowOfAnotherClassOfTheHierarchyIsRejected(): void
+    {
+        $this->database->rows = ['wp_sympress_vehicles' => [['id' => 'c1', 'kind' => 'car', 'garage_id' => null]]];
+        $manager = $this->manager();
+
+        try {
+            $manager->persist(new SportsCar('c1'));
+            self::fail('Expected the row of another class to be rejected.');
+        } catch (\LogicException $exception) {
+            self::assertStringContainsString(Car::class, $exception->getMessage());
+        }
+
+        $manager->flush();
+        self::assertSame([], $this->database->inserted);
+        self::assertSame([], $this->database->updated);
+    }
+
     private function manager(): EntityManager
     {
         $metadata = new MetadataFactory();
         $registry = new EntityClassRegistry($metadata, classes: [
             Article::class, Author::class, TypeCatalogEntity::class, VersionedEmailLog::class, ExplicitEmailLog::class,
+            Vehicle::class, Car::class, SportsCar::class, Garage::class,
         ]);
 
         return new EntityManager($metadata, $registry, new EntityHydrator(), $this->database);
