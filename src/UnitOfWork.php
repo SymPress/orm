@@ -350,21 +350,22 @@ final class UnitOfWork
     public function tryGetById(ClassMetadata $metadata, mixed $id): ?object
     {
         $key = $this->identifierKey($id);
+        $exact = $this->identityMap[$metadata->className][$key] ?? null;
 
-        if (isset($this->identityMap[$metadata->className][$key])) {
-            return $this->identityMap[$metadata->className][$key];
+        if ($exact !== null && !$this->isUninitializedReference($exact)) {
+            return $exact;
         }
 
         foreach ([$metadata->rootClassName, ...array_values($metadata->discriminatorMap)] as $className) {
             $entity = $className === null ? null : $this->identityMap[$className][$key] ?? null;
 
-            // An unloaded reference of another class is only a guess at the row's class, not proof of it.
+            // An unloaded reference is only a guess at the row's class; a loaded entity of the hierarchy proves it.
             if ($entity !== null && !$this->isUninitializedReference($entity)) {
                 return $entity;
             }
         }
 
-        return null;
+        return $exact;
     }
 
     /** @return array<string, mixed> */
