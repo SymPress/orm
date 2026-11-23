@@ -318,6 +318,13 @@ The generated SQL still goes through `$wpdb->prepare()`. Write a literal `%`
 as is, for example `LIKE 'que%'`; the builder escapes it for `prepare()`.
 Parameters work in `select()` expressions too.
 
+`select()`, `where()`, `having()`, `groupBy()`, join conditions, `Criteria`
+expressions and DQL strings are SQL expression fragments. Mapped field paths
+and `:name` or `?1` parameters are rewritten in them; quoted literals (`'...'`,
+`"..."`, `` `...` ``) are left exactly as written. A `;`, a subselect
+(`SELECT`), `UNION`, a comment (`/*`, `#`, `-- `) or an unterminated literal
+outside a literal throws `InvalidArgumentException`.
+
 Keep dynamic values out of query strings. The builder validates mapped field
 paths and prepares parameter values, but it cannot make interpolated strings
 safe. Put request data in `setParameter()` or `setParameters()` instead of
@@ -391,6 +398,9 @@ A `SELECT` that contains anything else, such as `JOIN ... ON`, `LIMIT`, a second
 `FROM` entity, or a misspelled keyword, throws `InvalidArgumentException` instead
 of being compiled without that part. Use `setMaxResults()` on the query builder
 for limits.
+
+Clauses are split outside string literals, so `WHERE l.status = 'x ORDER BY y'`
+compares with that string. The fragment rules of the query builder apply.
 
 This is not a full Doctrine DQL parser. Subqueries, partial object hydration,
 full AST walkers, and the complete Doctrine grammar are not part of this package
