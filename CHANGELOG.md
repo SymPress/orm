@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0 — 2026-11-23
+
+- Write an object persisted for an existing row. `persist()` and `Repository::save()` on an unmanaged object whose identifier already existed only counted the row and attached the object as it was, so `persist(new Setting('site', 'new value')); flush();` wrote nothing and only changes made after `persist()` were written. `persist()` now reads the row instead of counting it, the same single query, and `flush()` writes every column in which the object differs from the row, including to-one foreign keys, with the update events of any managed entity; an object equal to its row writes nothing. The row is normalized like the original data of an entity loaded with `find()`, so string values from `wpdb` do not differ from integers, floats, booleans, dates, JSON or enums. Behaviour change; see `UPGRADE.md`.
+- A versioned object persisted for an existing row must carry the row's current version: a stale version fails with `OptimisticLockException` at `flush()` instead of overwriting the row, and the current version is written and incremented.
+- Under `DEFERRED_EXPLICIT` change tracking, `persist()` of an object that differs from its existing row is the explicit request, so the differences are written at the next `flush()`.
+- `persist()` throws a `LogicException` when the existing row belongs to another class of the inheritance hierarchy instead of attaching the object to it.
+- Owning many-to-many collections of such an object keep their behaviour: a collection that is not empty replaces the join rows, an empty one writes nothing. `getEntityState()` is unchanged.
+
 ## 0.5.9 — 2026-11-23
 
 - Split DQL `SELECT` and `GROUP BY` lists only at commas outside parentheses. Since 0.5.8, legal DQL with a comma inside a function call, such as `SELECT CONCAT(a.title, a.id) FROM Article a`, `SELECT IFNULL(a.title, 'x'), a.id FROM ...` or `GROUP BY CONCAT(a.title, a.id)`, threw `Unbalanced parentheses`; it compiled in 0.5.5. The same split had kept a registered DQL function with more than one argument in a DQL `SELECT` from ever being translated; it now is. DQL clauses are also split only at keywords outside parentheses, so `HAVING GROUP_CONCAT(a.title ORDER BY a.id) ...` compiles.
