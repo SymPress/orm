@@ -106,6 +106,8 @@ Supported DQL is a focused subset:
 
 `ORDER BY` accepts mapped field paths only, for example `l.createdAt`. Raw SQL fragments are rejected.
 
+`select()`, `where()`, `having()`, `groupBy()`, join conditions, `Criteria` expressions and DQL strings are SQL expression fragments, not a Doctrine grammar. The internal `Query\LiteralMask` scanner separates code from quoted literals (`'...'`, `"..."`, `` `...` ``, with doubled quotes and backslash escapes); field paths, parameters and DQL functions are rewritten and DQL clauses are split in code only, and literals reach SQL byte for byte (apart from the `%%` escape). Outside literals a `;`, `SELECT` (subselects), `UNION`, `/*`, `#`, `--` before whitespace and an unterminated literal throw `InvalidArgumentException`, because they would end the fragment or cut off what the builder appends after it.
+
 Do not interpolate request values into `where()`, `having()`, join conditions, or DQL strings. Those APIs accept expression snippets so mapped fields can be compiled, but dynamic values are only safe when bound through named or positional parameters. User-controlled sort choices should be mapped through an allow-list before calling `orderBy()` or `addOrderBy()`.
 
 ### SchemaTool
