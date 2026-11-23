@@ -120,10 +120,11 @@ final class EntityManager implements EntityManagerInterface
 
         $metadata = $this->getClassMetadata($entityClass);
         $identifierData = $this->normalizeIdentifierData($metadata, $id);
-        $managed = $this->unitOfWork->tryGetById($entityClass, $identifierData);
+        $managed = $this->unitOfWork->tryGetById($metadata, $identifierData);
 
         if ($managed !== null) {
-            return $managed;
+            // A managed row of another class of the hierarchy is no row of this class.
+            return $managed instanceof $entityClass ? $managed : null;
         }
 
         $hydrating = $this->unitOfWork->hydratingMetadata($entityClass, $identifierData);
@@ -427,10 +428,10 @@ final class EntityManager implements EntityManagerInterface
 
         $metadata = $this->getClassMetadata($entityClass);
         $identifierData = $this->normalizeIdentifierData($metadata, $id);
-        $managed = $this->unitOfWork->tryGetById($entityClass, $identifierData);
+        $managed = $this->unitOfWork->tryGetById($metadata, $identifierData);
 
         if ($managed !== null) {
-            return $managed;
+            return $managed instanceof $entityClass ? $managed : throw EntityNotFoundException::fromClassAndIdentifier($entityClass, $identifierData);
         }
 
         // A row of an inheritance root may be a subclass, and a lazy object cannot change its class once created.
@@ -1157,7 +1158,7 @@ final class EntityManager implements EntityManagerInterface
                         continue;
                     }
 
-                    $orphan = $this->unitOfWork->tryGetById($association->targetEntity, $identifierKey);
+                    $orphan = $this->unitOfWork->tryGetById($this->getClassMetadata($association->targetEntity), $identifierKey);
 
                     if (is_object($orphan)) {
                         $this->remove($orphan);

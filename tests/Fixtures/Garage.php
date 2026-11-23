@@ -21,7 +21,7 @@ final class Garage
         #[Id]
         #[Column(type: 'string', length: 32)]
         public string $id,
-        #[OneToMany(targetEntity: Car::class, mappedBy: 'garage')]
+        #[OneToMany(targetEntity: Car::class, mappedBy: 'garage', orphanRemoval: true)]
         public Collection $cars = new Collection(),
         #[ManyToMany(targetEntity: Car::class)]
         #[JoinTable(
