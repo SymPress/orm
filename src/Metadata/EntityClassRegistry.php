@@ -75,7 +75,10 @@ final class EntityClassRegistry
         return array_values(array_unique($classes));
     }
 
-    /** @return array<string, list<class-string>> */
+    /**
+     * @internal
+     * @return array<string, list<class-string>>
+     */
     public function groups(): array
     {
         $groups = $this->discoveredGroups();
@@ -92,6 +95,7 @@ final class EntityClassRegistry
         return $groups;
     }
 
+    /** @internal */
     public function managerForClass(string $className): ?string
     {
         foreach ($this->groups() as $manager => $classes) {
@@ -103,6 +107,7 @@ final class EntityClassRegistry
         return null;
     }
 
+    /** @internal */
     public function findByShortName(string $shortName): ?string
     {
         foreach ($this->classes() as $className) {

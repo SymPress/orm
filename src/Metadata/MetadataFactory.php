@@ -56,7 +56,10 @@ final class MetadataFactory
     /** @var array<string, true> */
     private array $mappingFiles = [];
 
-    /** @return list<string> */
+    /**
+     * @internal
+     * @return list<string>
+     */
     public function mappingResources(): array
     {
         $files = array_keys($this->mappingFiles);
@@ -95,7 +98,10 @@ final class MetadataFactory
             : ($this->catalog?->metadata[$className] ?? null);
     }
 
-    /** @param class-string $className */
+    /**
+     * @internal
+     * @param class-string $className
+     */
     public function hasMetadataFor(string $className): bool
     {
         if (isset($this->metadata[$className]) || $this->compiledMetadata($className) !== null) {
@@ -105,7 +111,10 @@ final class MetadataFactory
         return $this->entityAttribute($this->reflection($className)) instanceof Entity;
     }
 
-    /** @param class-string $className */
+    /**
+     * @internal
+     * @param class-string $className
+     */
     public function getMetadataFor(string $className): ClassMetadata
     {
         if (isset($this->metadata[$className])) {
