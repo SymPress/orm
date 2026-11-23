@@ -165,6 +165,8 @@ Important attributes:
 - inheritance attributes such as `#[InheritanceType]`, `#[DiscriminatorColumn]`, and `#[DiscriminatorMap]`
 - `#[Cache]` for entity or association cache regions
 
+A query on a single-table subclass sees only rows whose discriminator is the value of that class or of one of its mapped subclasses: query builder and DQL `SELECT` (the root entity and joined entities), DQL `UPDATE` and `DELETE`, `find()`, lazy references and to-many collections. The discriminator values are bound as parameters. A query on the hierarchy root sees every row.
+
 ## Associations and Collections
 
 To-many associations can use `Collection` or `PersistentCollection`. Persistent collections load lazily through the entity manager and can count rows without full initialization when only a count is needed.
