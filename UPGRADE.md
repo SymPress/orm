@@ -2,7 +2,7 @@
 
 ## From 0.3.8 to 1.0
 
-These behaviour changes from 0.3.9 to 0.5.8 can require action. `CHANGELOG.md`
+These behaviour changes from 0.3.9 to 0.6.0 can require action. `CHANGELOG.md`
 lists every change.
 
 ### Queries
@@ -70,6 +70,19 @@ lists every change.
   row throws `EntityNotFoundException` at `remove()` instead of deleting
   nothing; since 0.5.6 a cascaded remove skips such a reference instead.
   Use DQL `DELETE` to delete rows without loading them.
+
+### Persisting
+
+- **`persist()` of an existing row writes the object (0.6.0).** `persist()` and
+  `Repository::save()` on an unmanaged object whose identifier already exists
+  used to attach it as it was, so only changes made after `persist()` were
+  written. They now write every column in which the object differs from the
+  row. Code that used `persist()` only to re-attach an object, for example one
+  built with partial data, now overwrites the row with that object's state:
+  load the entity with `find()` and change it instead. A versioned object must
+  carry the row's current version, or `flush()` throws
+  `OptimisticLockException`, and a row of another class of the inheritance
+  hierarchy makes `persist()` throw a `LogicException`.
 
 ### Public API
 
