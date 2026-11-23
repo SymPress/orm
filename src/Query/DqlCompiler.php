@@ -322,14 +322,13 @@ final readonly class DqlCompiler
             return '';
         }
 
-        return $mask->restore(preg_replace_callback(
-            '/(?::([a-zA-Z_][a-zA-Z0-9_]*)|\?([0-9]+))/',
-            static function (array $matches) use ($queryParameters, $entityManager, &$values): string {
-                $name = $matches[1] !== '' ? $matches[1] : ($matches[2] ?? '');
+        return $mask->restore(self::replaceParameters(
+            $expression,
+            static function (string $token, string $name) use ($queryParameters, $entityManager, &$values): string {
                 $value = $queryParameters[$name] ?? null;
 
                 if (!array_key_exists($name, $queryParameters)) {
-                    throw new \InvalidArgumentException(sprintf('Missing query parameter "%s".', $matches[0]));
+                    throw new \InvalidArgumentException(sprintf('Missing query parameter "%s".', $token));
                 }
 
                 if (is_array($value)) {
@@ -348,8 +347,27 @@ final readonly class DqlCompiler
 
                 return self::bindParameter($value, $entityManager, $values);
             },
-            $expression,
-        ) ?? '');
+        ));
+    }
+
+    /**
+     * Replaces each :name and ?1 in masked expression code with what $bind returns for it.
+     *
+     * wpdb::prepare() leaves a %s unquoted when a % stands directly before it, and drops the quotes of '%s' and
+     * "%s". A parameter that touches a % or a masked literal is therefore set off by a space, so that no
+     * placeholder the ORM emits can follow a % or sit between quotes.
+     *
+     * @param \Closure(string $token, string $name): string $bind
+     */
+    public static function replaceParameters(string $code, \Closure $bind): string
+    {
+        return preg_replace_callback(
+            '/([%\x01]?)(:([a-zA-Z_][a-zA-Z0-9_]*)|\?([0-9]+))(\x01?)/',
+            static fn (array $matches): string => $matches[1] . ($matches[1] === '' ? '' : ' ')
+                . $bind($matches[2], $matches[3] !== '' ? $matches[3] : $matches[4])
+                . ($matches[5] === '' ? '' : ' ') . $matches[5],
+            $code,
+        ) ?? '';
     }
 
     /**
