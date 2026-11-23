@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 — 2026-11-23
+
+- Load `getReference()` results and to-one associations on first access. They are native PHP lazy ghosts (`ReflectionClass::newLazyGhost()`, no generated proxies): reading the identifier does not query, the first access to any other property loads the row through the `find()` path (second-level cache, `postLoad`), and a row loaded by another query fills the reference without a second query. `$article->author->name` used to fail with "must not be accessed before initialization" unless the author had been loaded before. Each reference costs one query (N+1); join the association or load the targets first. Serializing, cloning, `json_encode()` and `==` load a reference, as any property access does.
+- Throw the new `SymPress\Orm\Exception\EntityNotFoundException` when the row of a reference does not exist.
+- Load references to an inheritance root whose discriminator map lists subclasses eagerly, so they get the subclass of the row; `getReference()` then queries at once and throws `EntityNotFoundException` for a missing row.
+- Throw a `LogicException` on first access to a reference detached by `clear()`, `detach()` or `close()` instead of loading it; its identifier stays readable.
+- Bind the lazy collections of a reference filled from a row, and of a refreshed entity, to that entity. Orphan removal deleted nothing for them and owning many-to-many join rows were rewritten on the next flush.
+
 ## 0.3.12 — 2026-11-23
 
 - Accept named parameters called like the keywords 0.3.11 rejects. `where('l.status = :table')`, `:select`, `:union`, `:intersect` and `:except` threw `Unsupported "table" in DQL expression`; a named parameter is always bound and never reaches SQL as a keyword.
