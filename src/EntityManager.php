@@ -198,6 +198,19 @@ final class EntityManager implements EntityManagerInterface
      */
     private function existingRowData(ClassMetadata $metadata, array $row, array $data): array
     {
+        if ($metadata->discriminatorColumn !== null) {
+            $rowClass = $metadata->discriminatorMap[(string) ($row[$metadata->discriminatorColumn] ?? '')] ?? null;
+
+            if ($rowClass !== $metadata->className) {
+                throw new \LogicException(sprintf(
+                    'Cannot persist "%s" with identifier %s: the row belongs to "%s".',
+                    $metadata->className,
+                    (string) json_encode($this->identifierFromData($metadata, $data)),
+                    $rowClass ?? 'an unmapped discriminator value',
+                ));
+            }
+        }
+
         $original = $this->hydrator->rowData($metadata, $row, $this);
         $version = $metadata->versionColumn();
 
