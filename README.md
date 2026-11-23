@@ -2,7 +2,9 @@
 
 [![Checks](https://img.shields.io/github/actions/workflow/status/SymPress/orm/qa.yml?branch=main&label=checks)](https://github.com/SymPress/orm/actions/workflows/qa.yml) [![Release](https://img.shields.io/github/v/release/SymPress/orm?label=release)](https://github.com/SymPress/orm/releases) [![PHP](https://img.shields.io/packagist/dependency-v/sympress/orm/php.svg?label=php)](https://packagist.org/packages/sympress/orm) [![Downloads](https://img.shields.io/packagist/dt/sympress/orm.svg?label=downloads)](https://packagist.org/packages/sympress/orm/stats) [![License: GPL-2.0-or-later](https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg)](composer.json)
 
-> **Status:** WIP (Work in Progress). [ROADMAP.md](ROADMAP.md) lists the steps to 1.0.0.
+> **Status:** Stable. 1.x follows Semantic Versioning as defined in
+> [docs/backward-compatibility.md](docs/backward-compatibility.md);
+> [UPGRADE.md](UPGRADE.md) lists the changes needed to upgrade from 0.x.
 
 Doctrine-inspired ORM primitives for WordPress projects that keep `wpdb` as the
 database runtime.
@@ -27,9 +29,10 @@ and registers its services and console commands automatically.
 
 The root project should also require `sympress/migration` when ORM-managed
 schema migrations should be registered and executed through the migration
-bridge. ORM 0.3.3 requires Migration 1.0.8 or newer when that optional package is
-installed; update both together for lock ownership, typed operational errors
-and the explicit `wp migration adopt --retire-superseded` upgrade workflow.
+bridge. The ORM requires Migration 1.0.8 or newer when that optional package is
+installed (older versions conflict); it provides lock ownership, typed
+operational errors and the explicit `wp migration adopt --retire-superseded`
+upgrade workflow.
 
 ## Features
 
@@ -41,27 +44,31 @@ and the explicit `wp migration adopt --retire-superseded` upgrade workflow.
 - To-one and to-many association mapping with simple or composite join columns
   and join tables
 - Lazy to-many collections and lazy to-one references (native PHP lazy objects)
+- Single-table inheritance; queries on a subclass see only the rows of that
+  class and its mapped subclasses
 - Cascade persist/remove and owning many-to-many join-table synchronization
 - Lifecycle callbacks and event listeners for common ORM lifecycle events
 - Entity metadata discovery from active SymPress kernel bundles
 - Optional metadata cache
-- Doctrine-like `EntityManager`
-- Deferred persistence with `persist()` and `flush()`
+- Doctrine-like `EntityManager`, with `EntityManagerInterface` and
+  `RepositoryInterface` for consumers, decorators and test doubles
+- Deferred persistence with `persist()` and `flush()`; `persist()` of an object
+  whose row exists writes what differs from the row
 - `UnitOfWork` with managed entities, original data snapshots, identity map,
   entity states, scheduled insertions, scheduled deletions, and change detection
 - CRUD-oriented `Repository`
-- `find()`, `findAll()`, `findBy()`, and `findOneBy()`
+- `find()`, `findAll()`, `findBy()`, `findOneBy()`, and `matching()` with `Criteria`
 - Explicit `remove()`, `detach()`, `clear()`, `close()`, `refresh()`, and `contains()`
 - Lazy entity references with `getReference()` that load on first access
 - Transaction helper with `transactional()`
 - Automatic transaction wrapping during `flush()`
 - Version columns, optimistic lock checks, and pessimistic lock helpers
 - Deferred implicit and deferred explicit change tracking
-- Hydration and extraction for scalar, date, datetime, time, boolean, JSON, and
-  array column values
-- Query builder with entity-field-to-column translation, joins, grouping,
-  join conditions, grouping, ordering, limits, offsets, object parameters, and
-  array parameters
+- Hydration and extraction for string, integer, float, decimal, boolean, date,
+  datetime, time, JSON, array and enum column values
+- Query builder with entity-field-to-column translation, joins, join
+  conditions, grouping, ordering, limits, offsets, object parameters, and array
+  parameters; fragments that would change the statement are rejected
 - DQL-style `SELECT`, `UPDATE`, and `DELETE` queries with mapped fields,
   joins, named parameters, positional parameters, expanded array parameters,
   custom DQL functions, and output walkers
@@ -382,8 +389,8 @@ expressions and DQL strings are SQL expression fragments. Mapped field paths
 and `:name` or `?1` parameters are rewritten in them; quoted literals (`'...'`,
 `"..."`, `` `...` ``) are left exactly as written. A `;`, a subselect
 (`SELECT`, `TABLE`), `UNION`, `INTERSECT`, `EXCEPT`, a comment (`/*`, `#`,
-`-- `) or an unterminated literal outside a literal throws
-`InvalidArgumentException`.
+`-- `), an unterminated literal or unbalanced parentheses outside a literal
+throws `InvalidArgumentException`.
 
 Keep dynamic values out of query strings. The builder validates mapped field
 paths and prepares parameter values, but it cannot make interpolated strings
@@ -433,7 +440,8 @@ Supported DQL subset:
 
 - one root entity
 - one alias
-- `SELECT alias`
+- `SELECT alias`, or a list of mapped fields and expressions such as function
+  calls
 - `JOIN`, `INNER JOIN`, and `LEFT JOIN` over mapped to-one, one-to-many, and
   many-to-many associations, with an optional `WITH` condition
 - `WHERE` expressions using mapped fields
@@ -463,9 +471,9 @@ Clauses are split outside string literals, so `WHERE l.status = 'x ORDER BY y'`
 compares with that string. The fragment rules of the query builder apply.
 
 This is not a full Doctrine DQL parser. Subqueries, partial object hydration,
-full AST walkers, and the complete Doctrine grammar are not part of this package
-yet. Lightweight custom DQL functions and SQL output walkers can be registered
-on the entity manager.
+full AST walkers, and the complete Doctrine grammar are not part of this
+package. Lightweight custom DQL functions and SQL output walkers can be
+registered on the entity manager.
 
 ## Transactions
 
@@ -581,7 +589,7 @@ the changes needed to upgrade.
 ## Current Limitations
 
 The package is intentionally small and pragmatic. These features are not part
-of the current implementation:
+of 1.x so far:
 
 - lazy references to an inheritance root with subclasses; they load eagerly
   because the row may be a subclass
