@@ -15,6 +15,7 @@ use SymPress\Orm\Tests\Fixtures\Author;
 use SymPress\Orm\Tests\Fixtures\Course;
 use SymPress\Orm\Tests\Fixtures\EmailLog;
 use SymPress\Orm\Tests\Fixtures\MailStatus;
+use SymPress\Orm\Tests\Fixtures\NumericUser;
 use SymPress\Orm\Tests\Fixtures\Student;
 use SymPress\Orm\Tests\Fixtures\Tenant;
 use SymPress\Orm\Tests\Fixtures\TenantPost;
@@ -412,6 +413,51 @@ final class QueryBuilderTest extends TestCase
         self::assertSame(
             "DELETE `l` FROM `wp_sympress_mailer_logs` `l` WHERE `l`.`status` LIKE 'q%'",
             $manager->createQuery("DELETE FROM EmailLog l WHERE l.status LIKE 'q%'")->getSQL(),
+        );
+    }
+
+    /** @return iterable<string, array{mixed, string}> */
+    public static function parametersAfterPercent(): iterable
+    {
+        yield 'string' => ['2 OR 1=1', "% '2 OR 1=1'"];
+        yield 'array' => [['2 OR 1=1', '3'], "% '2 OR 1=1', '3'"];
+        yield 'integer' => [2, '% 2'];
+    }
+
+    #[DataProvider('parametersAfterPercent')]
+    public function testParameterDirectlyAfterPercentStaysQuoted(mixed $value, string $prepared): void
+    {
+        $metadata = new MetadataFactory();
+        $manager = new EntityManager($metadata, new EntityClassRegistry($metadata, classes: [NumericUser::class]), new EntityHydrator(), new \wpdb());
+        $table = '`wp_sympress_numeric_users` `u`';
+        $where = " WHERE `u`.`id` {$prepared} = 0";
+
+        // wpdb::prepare() leaves a %s unquoted when a % stands directly before it.
+        self::assertSame(
+            "SELECT `u`.* FROM {$table}{$where}",
+            $manager->createQueryBuilder()->from(NumericUser::class, 'u')->where('u.id %:n = 0')->setParameter('n', $value)->getQuery()->getSQL(),
+        );
+        self::assertSame("SELECT `u`.* FROM {$table}{$where}", $manager->createQuery('SELECT u FROM NumericUser u WHERE u.id %?1 = 0', [1 => $value])->getSQL());
+        self::assertSame(
+            "UPDATE {$table} SET `u`.`name` = 'x'{$where}",
+            $manager->createQuery("UPDATE NumericUser u SET u.name = 'x' WHERE u.id %:n = 0", ['n' => $value])->getSQL(),
+        );
+        self::assertSame("DELETE `u` FROM {$table}{$where}", $manager->createQuery('DELETE FROM NumericUser u WHERE u.id %:n = 0', ['n' => $value])->getSQL());
+    }
+
+    public function testParameterBetweenStringLiteralsStaysQuoted(): void
+    {
+        $manager = $this->emailLogManager();
+
+        // wpdb::prepare() drops the quotes of '%s' and "%s", which would leave the value outside any literal.
+        self::assertStringEndsWith(
+            "WHERE `l`.`status` = 'a' '2 OR 1=1' 'b'",
+            $manager->createQueryBuilder()->select('l')->from(EmailLog::class, 'l')
+                ->where("l.status = 'a':s'b'")->setParameter('s', '2 OR 1=1')->getQuery()->getSQL(),
+        );
+        self::assertStringEndsWith(
+            "WHERE `l`.`status` = \"a\" '2 OR 1=1' \"b\"",
+            $manager->createQuery('DELETE FROM EmailLog l WHERE l.status = "a"?1"b"', [1 => '2 OR 1=1'])->getSQL(),
         );
     }
 

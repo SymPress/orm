@@ -503,14 +503,13 @@ final class QueryBuilder
             return '';
         }
 
-        return $mask->restore(preg_replace_callback(
-            '/(?::([a-zA-Z_][a-zA-Z0-9_]*)|\?([0-9]+))/',
-            function (array $matches) use (&$parameters): string {
-                $name = $matches[1] !== '' ? $matches[1] : ($matches[2] ?? '');
+        return $mask->restore(DqlCompiler::replaceParameters(
+            $expression,
+            function (string $token, string $name) use (&$parameters): string {
                 $value = $this->parameters[$name] ?? null;
 
                 if (!array_key_exists($name, $this->parameters)) {
-                    throw new \InvalidArgumentException(sprintf('Missing query parameter "%s".', $matches[0]));
+                    throw new \InvalidArgumentException(sprintf('Missing query parameter "%s".', $token));
                 }
 
                 if (is_array($value)) {
@@ -529,8 +528,7 @@ final class QueryBuilder
 
                 return DqlCompiler::bindParameter($value, $this->entityManager, $parameters);
             },
-            $expression,
-        ) ?? '');
+        ));
     }
 
     private function orderByClause(string $sort, string $order): string
