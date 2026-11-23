@@ -246,7 +246,7 @@ For schema updates, destructive drops are disabled by default to protect existin
 - The identity map returns already managed entities without re-querying.
 - `flush()` writes only scheduled or dirty entities.
 - Owning many-to-many synchronization uses collection snapshots and skips unchanged collections.
-- `Query::toIterable()` currently iterates over the in-memory result set returned by `wpdb`; it is not a streaming cursor.
+- `Query::toIterable()` iterates over the in-memory result set returned by `wpdb`; it is not a streaming cursor.
 
 ## Console and Migration Integration
 
@@ -351,7 +351,7 @@ Only disposable `sympress_review_*` databases are accepted. The runtime conflict
 with Migration below 1.0.8 ensures the optional bridge uses verified advisory
 lock/session ownership, explicit additional-legacy retirement and typed
 `MigrationOperationException` failures. Development upgrade tests require the
-same version. Update Migration alongside ORM when adopting this release.
+same version. Keep Migration at 1.0.8 or later when updating the ORM.
 The bootstrap requires an explicit `WORDPRESS_DB_NAME=sympress_review_*` value;
 it refuses general application databases. Required database CI fails skipped or
 incomplete tests and runs on pull requests, main and the weekly schedule.
