@@ -94,4 +94,26 @@ final class EntityHydratorTest extends TestCase
             'note' => null,
         ], $hydrator->extract($entity, $metadata));
     }
+
+    public function testTimeColumnsHydrateOnTheEpochDateSoTheSameRowYieldsEqualValues(): void
+    {
+        $metadata = (new MetadataFactory())->getMetadataFor(TypeCatalogEntity::class);
+        $hydrator = new EntityHydrator();
+        $clock = $metadata->columnForProperty('clock');
+        $clockImmutable = $metadata->columnForProperty('clockImmutable');
+        self::assertNotNull($clock);
+        self::assertNotNull($clockImmutable);
+
+        $first = $hydrator->fromDatabase($clock, '08:15:30');
+        $second = $hydrator->fromDatabase($clock, '08:15:30');
+        $immutable = $hydrator->fromDatabase($clockImmutable, '23:59:59');
+
+        self::assertInstanceOf(\DateTime::class, $first);
+        self::assertInstanceOf(\DateTimeImmutable::class, $immutable);
+        self::assertSame('1970-01-01 08:15:30', $first->format('Y-m-d H:i:s'));
+        self::assertSame('1970-01-01 23:59:59', $immutable->format('Y-m-d H:i:s'));
+        self::assertEquals($first, $second);
+        self::assertSame('08:15:30', $hydrator->toDatabase($clock, $first));
+        self::assertSame('23:59:59', $hydrator->toDatabase($clockImmutable, $immutable));
+    }
 }
