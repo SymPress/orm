@@ -8,7 +8,7 @@ use SymPress\Orm\Metadata\ClassMetadata;
 use SymPress\Orm\Query\Criteria;
 use SymPress\Orm\Query\QueryBuilder;
 
-class Repository
+class Repository implements RepositoryInterface
 {
     public function __construct(
         protected readonly EntityManager $entityManager,

@@ -33,6 +33,7 @@ services:
             - '../../src/Metadata/JoinTableMetadata.php'
             - '../../src/Query/CompiledQuery.php'
             - '../../src/Query/DqlCompiler.php'
+            - '../../src/RepositoryInterface.php'
 
     SymPress\Orm\Cache\CacheInterface:
         alias: SymPress\Orm\Cache\ArrayCache
