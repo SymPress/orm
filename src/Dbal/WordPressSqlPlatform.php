@@ -8,7 +8,8 @@ final readonly class WordPressSqlPlatform implements SqlPlatformInterface
 {
     public function quoteIdentifier(string $identifier): string
     {
-        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $identifier)) {
+        // Leading digits are valid in quoted identifiers and in WordPress table prefixes such as "7x_".
+        if (!preg_match('/^[A-Za-z0-9_]+$/D', $identifier)) {
             throw new \InvalidArgumentException(sprintf('Invalid SQL identifier "%s".', $identifier));
         }
 

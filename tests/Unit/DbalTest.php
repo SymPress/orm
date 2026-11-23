@@ -16,6 +16,7 @@ final class DbalTest extends TestCase
         $platform = new WordPressSqlPlatform();
 
         self::assertSame('`post_id`', $platform->quoteIdentifier('post_id'));
+        self::assertSame('`7x_posts`', $platform->quoteIdentifier('7x_posts'));
         self::assertSame('%d', $platform->parameterPlaceholder(123));
         self::assertSame('%d', $platform->parameterPlaceholder(true));
         self::assertSame('%s', $platform->parameterPlaceholder('queued'));
