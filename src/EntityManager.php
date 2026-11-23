@@ -387,6 +387,14 @@ final class EntityManager
 
         $reflection = new \ReflectionClass($entityClass);
         $entity = $reflection->newLazyGhost(function (object $reference) use ($metadata, $id, $identifierData): void {
+            if (!$this->unitOfWork->isUninitializedReference($reference)) {
+                throw new \LogicException(sprintf(
+                    'Cannot load the reference to "%s" %s: it is detached from its entity manager by clear(), detach() or close(). Load it again with find().',
+                    $metadata->className,
+                    (string) json_encode($identifierData),
+                ));
+            }
+
             $this->assertOpen();
 
             if ($this->load($metadata, $id) !== $reference) {

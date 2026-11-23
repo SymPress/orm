@@ -184,6 +184,29 @@ final class LazyReferenceTest extends TestCase
         $this->entityManager->getReference(Animal::class, 'missing');
     }
 
+    public function testDetachedReferenceFailsWithoutQuery(): void
+    {
+        $cleared = $this->entityManager->getReference(Author::class, 'author-1');
+        $this->entityManager->clear();
+        $detached = $this->entityManager->getReference(Author::class, 'author-1');
+        $this->entityManager->detach($detached);
+        $closed = $this->entityManager->getReference(Author::class, 'author-1');
+        $this->entityManager->close();
+
+        foreach ([$cleared, $detached, $closed] as $author) {
+            try {
+                $author->name;
+                self::fail('Expected a detached reference to fail.');
+            } catch (\LogicException $exception) {
+                self::assertStringContainsString('detached', $exception->getMessage());
+            }
+
+            self::assertSame('author-1', $author->id);
+        }
+
+        self::assertSame([], $this->database->selects);
+    }
+
     private static function isLazy(object $entity): bool
     {
         return (new \ReflectionClass($entity))->isUninitializedLazyObject($entity);
