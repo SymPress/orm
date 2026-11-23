@@ -131,22 +131,40 @@ If a `#[Column]` name is omitted, the property name is converted to snake case:
 
 ## Supported Column Types
 
-The schema generator maps common Doctrine-style types to MySQL types suitable
-for WordPress tables:
+The column type catalog is frozen for 1.x. The schema generator maps each
+mapping type to a MySQL column type for WordPress tables, and the hydrator
+converts the strings `wpdb` returns:
 
-- `string`, `varchar`
-- `guid`, `uuid`
-- `text`, `mediumtext`, `longtext`
-- `json`, `array`, `simple_array`
-- `smallint`, `integer`, `int`, `bigint`
-- `boolean`, `bool`
-- `float`, `double`, `decimal`
-- `date`, `date_immutable`
-- `datetime`, `datetime_immutable`
-- `time`, `time_immutable`
+| Mapping type | MySQL column | PHP type on read | Written as |
+| --- | --- | --- | --- |
+| `string`, `varchar` | `varchar(length)`, length 255 by default | `string` | the value |
+| `guid`, `uuid` | `varchar(36)` | `string` | the value |
+| `text`, `mediumtext`, `longtext` | the same name | `string` | the value |
+| `json`, `array`, `simple_array` | `longtext` | `array` | `json_encode()` with unescaped slashes |
+| `smallint`, `integer`, `int`, `bigint` | `smallint`, `int`, `bigint`; `unsigned: true` adds `unsigned` | `int` | the value |
+| `boolean`, `bool` | `tinyint(1)` | `bool` | `1` or `0` |
+| `float`, `double` | `float`, `double` | `float` | the value |
+| `decimal` | `decimal(precision,scale)`, `decimal(10,0)` by default | `float` | the value |
+| `date`, `date_immutable` | `date` | `\DateTime`, `\DateTimeImmutable` | `Y-m-d` |
+| `datetime`, `datetime_immutable` | `datetime` | `\DateTime`, `\DateTimeImmutable` | `Y-m-d H:i:s` |
+| `time`, `time_immutable` | `time` | `\DateTime`, `\DateTimeImmutable` on 1970-01-01 | `H:i:s` |
+
+- `decimal` hydrates as `float`, so its precision is that of a PHP float. Store
+  exact amounts, such as money, as integers or strings.
+- `json`, `array` and `simple_array` are stored as JSON and always hydrate to a
+  PHP array. A JSON scalar or invalid JSON reads as `[]`. `simple_array` is not
+  Doctrine's comma-separated format.
+- `time` values carry the date 1970-01-01, so the same row always yields an
+  equal value.
+- Date and time values are written in the timezone of the object and read in
+  PHP's default timezone; the ORM does not convert timezones.
+- A column with `enumType` reads through `BackedEnum::from()` and writes the
+  enum's backing value.
+- `null` reads and writes SQL `NULL` for every type.
 
 Other plain MySQL type names, such as `char(2)` or `tinyint unsigned`, are passed
-through unchanged. Anything else is rejected.
+through unchanged and read as the string `wpdb` returns. Anything else is
+rejected.
 
 Table, column, index and join column names must be plain SQL identifiers
 (letters, digits and underscores, not starting with a digit). Generated DDL quotes
