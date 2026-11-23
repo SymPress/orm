@@ -2,7 +2,7 @@
 
 ## From 0.3.8 to 1.0
 
-These behaviour changes from 0.3.9 to 0.5.7 can require action. `CHANGELOG.md`
+These behaviour changes from 0.3.9 to 0.5.8 can require action. `CHANGELOG.md`
 lists every change.
 
 ### Queries
@@ -18,6 +18,10 @@ lists every change.
   `INTERSECT`, `EXCEPT`, SQL comments and unterminated string literals outside
   string literals. Rewrite such queries without them, or run them as native SQL
   through `createNativeQuery()` with bound parameters.
+- **Unbalanced parentheses (0.5.8).** The same fragments throw
+  `InvalidArgumentException` when their parentheses outside string literals do
+  not balance or close before they open. Balance them; `orWhere()` checks its
+  fragments when it is called.
 - **Literals stay literal (0.3.11).** Field paths, `:name` and `?1` parameters
   and DQL functions inside quoted strings are no longer rewritten. Write
   `l.subject = :subject`, not `l.subject = ':subject'`.
