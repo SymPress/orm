@@ -178,6 +178,28 @@ final class OrmDatabaseTest extends TestCase
         self::assertSame([], $reviewed->getUpdateSchemaSql('default'));
     }
 
+    public function testLiteralsWithKeywordsAndParameterMarkersMatchTheirRows(): void
+    {
+        $metadata = new MetadataFactory();
+        $entities = new EntityClassRegistry($metadata, classes: [EmailLog::class]);
+        $tool = new SchemaTool($metadata, $entities, new SchemaSqlGenerator(), $this->database);
+        self::assertTrue((new WordPressSqlExecutor($this->database))->execute($tool->getCreateSchemaSql()));
+        $manager = new EntityManager($metadata, $entities, new EntityHydrator(), new WpdbConnection($this->database));
+        $manager->persist(new EmailLog('keyword', new \DateTimeImmutable(), 'a ORDER BY b'));
+        $manager->persist(new EmailLog('marker', new \DateTimeImmutable(), 'at 10:30 :x'));
+        $manager->flush();
+        $manager->clear();
+        $ids = static fn (array $logs): array => array_map(static fn (EmailLog $log): string => $log->id, $logs);
+
+        $byKeyword = $manager->createQuery("SELECT l FROM EmailLog l WHERE l.status = 'a ORDER BY b' ORDER BY l.id DESC")->getResult();
+        self::assertSame(['keyword'], $ids($byKeyword));
+        $byMarker = $manager->createQueryBuilder()->select('l')->from(EmailLog::class, 'l')
+            ->where("l.status = 'at 10:30 :x' AND l.id <> :other")->setParameter('other', 'keyword');
+        self::assertSame(['marker'], $ids($byMarker->getQuery()->getResult()));
+        $manager->createQuery("DELETE FROM EmailLog l WHERE l.status = 'at 10:30 :x' AND l.id = :id", ['id' => 'marker'])->execute();
+        self::assertSame(['keyword'], $this->database->get_col('SELECT id FROM wp_sympress_mailer_logs'));
+    }
+
     public function testSavepointsRollBackInnerWritesWhileCommittingOuterWrites(): void
     {
         $metadata = new MetadataFactory();
