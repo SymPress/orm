@@ -109,7 +109,8 @@ final class LazyReferenceTest extends TestCase
         self::assertTrue($this->entityManager->contains($article->author));
         $this->entityManager->flush();
 
-        self::assertCount(1, $this->database->selects);
+        // find() and the existence check of article-2 in persist().
+        self::assertCount(2, $this->database->selects);
         self::assertTrue(self::isLazy($article->author));
         self::assertSame(['id' => 'article-2', 'title' => 'Second', 'author_id' => 'author-1'], $this->database->inserted[0]['data']);
         self::assertCount(1, $this->database->updated);
@@ -145,7 +146,8 @@ final class LazyReferenceTest extends TestCase
         $this->entityManager->flush();
 
         self::assertTrue(self::isLazy($article->author));
-        self::assertCount(1, $this->database->selects);
+        // find() and the existence check of author-2 in persist().
+        self::assertCount(2, $this->database->selects);
         self::assertTrue($this->entityManager->isOpen());
         self::assertSame(4, $author->flushCalls, 'Loaded entities still get preFlush and postFlush.');
     }

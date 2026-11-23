@@ -107,6 +107,47 @@ final readonly class EntityHydrator
         return $data;
     }
 
+    /**
+     * The data extract() returns for an entity hydrated from $row, without building the entity: every value goes
+     * through fromDatabase() and back through toDatabase(), so a string row from wpdb compares equal to it.
+     *
+     * @internal
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    public function rowData(ClassMetadata $metadata, array $row, EntityManager $entityManager): array
+    {
+        $data = [];
+
+        foreach ($metadata->columns() as $column) {
+            if (array_key_exists($column->columnName, $row)) {
+                $data[$column->columnName] = $this->rowValue($metadata, $column, $row[$column->columnName], $entityManager);
+            }
+        }
+
+        return $data;
+    }
+
+    private function rowValue(ClassMetadata $metadata, ColumnMetadata $column, mixed $value, EntityManager $entityManager): mixed
+    {
+        $association = $metadata->associationForProperty($column->propertyName);
+
+        if (!$association instanceof AssociationMetadata || !$association->isToOne()) {
+            return $this->toDatabase($column, $this->fromDatabase($column, $value));
+        }
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        // A foreign key is extracted from the referenced column of the target; see associationDatabaseValue().
+        $targetMetadata = $entityManager->getClassMetadata($association->targetEntity);
+        $referencedColumnName = $this->joinColumnForColumn($association, $column)->referencedColumnName ?? 'id';
+        $referencedColumn = $targetMetadata->columnForName($referencedColumnName) ?? $targetMetadata->identifierColumn();
+
+        return $referencedColumn instanceof ColumnMetadata ? $this->rowValue($targetMetadata, $referencedColumn, $value, $entityManager) : $value;
+    }
+
     /** @internal */
     public function toDatabase(ColumnMetadata $column, mixed $value): mixed
     {
