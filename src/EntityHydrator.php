@@ -51,8 +51,18 @@ final readonly class EntityHydrator
     public function extract(object $entity, ClassMetadata $metadata, ?EntityManager $entityManager = null): array
     {
         $data = [];
+        $reflection = new \ReflectionClass($entity);
+        $uninitialized = $reflection->isUninitializedLazyObject($entity);
 
         foreach ($metadata->columns() as $column) {
+            $property = $column->propertyPath()[0];
+
+            // Reading a lazy property loads the row; an unloaded reference contributes its identifier only.
+            // ReflectionClass, because ReflectionObject::hasProperty() loads it to look for dynamic properties.
+            if ($uninitialized && $reflection->hasProperty($property) && $reflection->getProperty($property)->isLazy($entity)) {
+                continue;
+            }
+
             $association = $metadata->associationForProperty($column->propertyName);
 
             if ($association instanceof AssociationMetadata && $association->isToOne()) {
