@@ -212,7 +212,8 @@ final readonly class DqlCompiler
         $positions = [];
 
         foreach ($keywords as $keyword) {
-            if (preg_match('/\b' . str_replace(' ', '\s+', $keyword) . '\b/i', $tail, $match, PREG_OFFSET_CAPTURE) === 1) {
+            // After a dot the word is a column, after a colon a named parameter.
+            if (preg_match('/(?<![.:])\b' . str_replace(' ', '\s+', $keyword) . '\b/i', $tail, $match, PREG_OFFSET_CAPTURE) === 1) {
                 $positions[$keyword] = $match[0][1];
             }
         }

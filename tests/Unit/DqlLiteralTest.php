@@ -184,6 +184,20 @@ final class DqlLiteralTest extends TestCase
         );
     }
 
+    public function testDqlDoesNotSplitClausesAtNamedParameters(): void
+    {
+        $manager = $this->manager();
+
+        self::assertStringEndsWith(
+            "WHERE `l`.`status` = 'x' ORDER BY `l`.`id` ASC",
+            $manager->createQuery('SELECT l FROM EmailLog l WHERE l.status = :having ORDER BY l.id', ['having' => 'x'])->getSQL(),
+        );
+        self::assertStringEndsWith(
+            'GROUP BY `l`.`status` HAVING COUNT(`l`.`id`) > 1',
+            $manager->createQuery('SELECT l FROM EmailLog l GROUP BY l.status HAVING COUNT(l.id) > :where', ['where' => 1])->getSQL(),
+        );
+    }
+
     private function manager(): EntityManager
     {
         $metadata = new MetadataFactory();
