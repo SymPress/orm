@@ -165,7 +165,7 @@ Important attributes:
 - inheritance attributes such as `#[InheritanceType]`, `#[DiscriminatorColumn]`, and `#[DiscriminatorMap]`
 - `#[Cache]` for entity or association cache regions
 
-A query on a single-table subclass sees only rows whose discriminator is the value of that class or of one of its mapped subclasses: query builder and DQL `SELECT` (the root entity and joined entities), DQL `UPDATE` and `DELETE`, `find()`, lazy references and to-many collections. The discriminator values are bound as parameters. A query on the hierarchy root sees every row.
+A query on a single-table subclass sees only rows whose discriminator is the value of that class or of one of its mapped subclasses (a mapped class without a value of its own, such as an abstract intermediate class, sees those of its mapped subclasses, or no row): query builder and DQL `SELECT` (the root entity and joined entities), DQL `UPDATE` and `DELETE`, `find()`, lazy references and to-many collections. The discriminator values are bound as parameters. A query on the hierarchy root sees every row.
 
 ## Associations and Collections
 
