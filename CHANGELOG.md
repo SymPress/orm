@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.2 — 2026-11-24
+
+- Leave nothing scheduled when `persist()` throws. `persist()` registered the object before cascading, so when the cascade then threw (for example the `LogicException` for a second instance of a managed identity), the object and the children cascaded before the failure stayed scheduled, and a caller that caught the exception and called `flush()` inserted the parent without its child. The outermost `persist()` now detaches everything it and its cascade registered when any part of it throws, on the new-object and the existing-row path.
+- Remove a detached new entity from the identity map. `detach()` looked the entry up through the original data, which is empty for an entity persisted as new, so `find()` and the identity checks still saw the detached object.
+- Say in the `LogicException` of `persist()` that an unloaded reference counts as the managed instance (an article loaded before whose `author` points at the identifier) and that the entity should be loaded with `find()` and changed instead. The behaviour is unchanged.
+
 ## 0.6.1 — 2026-11-24
 
 - Return `null` from `find()` for a wrong-class reference next to a loaded row. Since 0.5.9, `find(Car::class, 'c1')` followed by `getReference(SportsCar::class, 'c1')` registers a `SportsCar` reference next to the loaded `Car`, and `find(SportsCar::class, 'c1')` returned that reference instead of `null`. A loaded entity of the hierarchy now takes precedence over an unloaded reference of the requested class, so `find()` returns `null` without a query; `getReference()` still returns the same lazy reference, which fails on first access.
