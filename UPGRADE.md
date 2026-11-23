@@ -83,6 +83,13 @@ lists every change.
   carry the row's current version, or `flush()` throws
   `OptimisticLockException`, and a row of another class of the inheritance
   hierarchy makes `persist()` throw a `LogicException`.
+  - `prePersist` does not run for an existing row; a value that a
+    `prePersist` callback sets for new rows is not set. A mapped property the
+    object never initialized keeps the row's value and is readable afterwards;
+    assign `null` explicitly to write `NULL`.
+  - `persist()` throws a `LogicException` when another instance with the same
+    identifier is already managed, for example one loaded with `find()`.
+    Change that instance instead of persisting a second one.
 
 ### Public API
 
