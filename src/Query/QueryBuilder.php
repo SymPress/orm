@@ -108,7 +108,7 @@ final class QueryBuilder
 
     public function orWhere(string $predicate): self
     {
-        $previous = $this->where === [] ? '1 = 0' : sprintf('(%s)', implode(' AND ', $this->where));
+        $previous = $this->where === [] ? '1 = 0' : sprintf('(%s)', self::conjunction($this->where));
         $this->where = [sprintf('%s OR (%s)', $previous, $predicate)];
 
         return $this;
@@ -423,7 +423,7 @@ final class QueryBuilder
             return $sql;
         }
 
-        return $sql . ' AND ' . $this->compileExpression($condition, $parameters);
+        return $sql . ' AND (' . $this->compileExpression($condition, $parameters) . ')';
     }
 
     /** @param list<mixed> $parameters */
@@ -454,7 +454,17 @@ final class QueryBuilder
             $compiled[] = $this->compileExpression($predicate, $parameters);
         }
 
-        return implode(' AND ', $compiled);
+        return self::conjunction($compiled);
+    }
+
+    /**
+     * Each fragment is one predicate: combined ones are parenthesized, so an OR inside one cannot bind across the AND.
+     *
+     * @param list<string> $predicates
+     */
+    private static function conjunction(array $predicates): string
+    {
+        return count($predicates) === 1 ? $predicates[0] : '(' . implode(') AND (', $predicates) . ')';
     }
 
     /** @param list<mixed> $parameters */

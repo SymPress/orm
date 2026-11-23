@@ -10,6 +10,8 @@ use SymPress\Orm\EntityHydrator;
 use SymPress\Orm\EntityManager;
 use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\MetadataFactory;
+use SymPress\Orm\Query\Criteria;
+use SymPress\Orm\Query\QueryBuilder;
 use SymPress\Orm\Tests\Fixtures\Article;
 use SymPress\Orm\Tests\Fixtures\Author;
 use SymPress\Orm\Tests\Fixtures\Course;
@@ -458,6 +460,73 @@ final class QueryBuilderTest extends TestCase
         self::assertStringEndsWith(
             "WHERE `l`.`status` = \"a\" '2 OR 1=1' \"b\"",
             $manager->createQuery('DELETE FROM EmailLog l WHERE l.status = "a"?1"b"', [1 => '2 OR 1=1'])->getSQL(),
+        );
+    }
+
+    /** @return iterable<string, array{\Closure(QueryBuilder): QueryBuilder, string}> */
+    public static function combinedPredicates(): iterable
+    {
+        $title = '`a`.`title` = %s';
+        $author = '`a`.`author_id` = %s';
+
+        yield 'where with OR, then andWhere' => [
+            static fn (QueryBuilder $builder): QueryBuilder => $builder->where('a.title = :t OR a.title = :u')->andWhere('a.author = :au'),
+            "WHERE ({$title} OR {$title}) AND ({$author})",
+        ];
+        yield 'orWhere, then andWhere' => [
+            static fn (QueryBuilder $builder): QueryBuilder => $builder->where('a.title = :t')->orWhere('a.title = :u')->andWhere('a.author = :au'),
+            "WHERE (({$title}) OR ({$title})) AND ({$author})",
+        ];
+        yield 'andWhere after OR, then orWhere' => [
+            static fn (QueryBuilder $builder): QueryBuilder => $builder->where('a.title = :t OR a.title = :u')->andWhere('a.author = :au')->orWhere('a.id = :id'),
+            "WHERE (({$title} OR {$title}) AND ({$author})) OR (`a`.`id` = %s)",
+        ];
+        yield 'having with OR, then andHaving' => [
+            static fn (QueryBuilder $builder): QueryBuilder => $builder->groupBy('a.author')->having('COUNT(a.id) = :t OR COUNT(a.id) = :u')->andHaving('MAX(a.title) = :au'),
+            'HAVING (COUNT(`a`.`id`) = %s OR COUNT(`a`.`id`) = %s) AND (MAX(`a`.`title`) = %s)',
+        ];
+        yield 'join condition with OR' => [
+            static fn (QueryBuilder $builder): QueryBuilder => $builder->join('a.author', 'au', 'au.name = :t OR au.name = :u'),
+            'ON `a`.`author_id` = `au`.`id` AND (`au`.`name` = %s OR `au`.`name` = %s)',
+        ];
+    }
+
+    /** @param \Closure(QueryBuilder): QueryBuilder $build */
+    #[DataProvider('combinedPredicates')]
+    public function testEachPredicateStaysOnePredicateWhenCombined(\Closure $build, string $sql): void
+    {
+        $metadata = new MetadataFactory();
+        $manager = new EntityManager($metadata, new EntityClassRegistry($metadata, classes: [Article::class, Author::class]), new EntityHydrator(), new \wpdb());
+        $builder = $manager->createQueryBuilder()->select('a')->from(Article::class, 'a')
+            ->setParameters(['t' => 'x', 'u' => 'y', 'au' => 'author-1', 'id' => 'a-1']);
+
+        self::assertStringContainsString($sql, $build($builder)->compile()->sql);
+    }
+
+    public function testDqlJoinConditionAndCriteriaStayOnePredicate(): void
+    {
+        $metadata = new MetadataFactory();
+        $database = new class extends \wpdb {
+            public function get_results(string $query, string|int $output = ARRAY_A): array
+            {
+                $this->queries[] = $query;
+                return [];
+            }
+        };
+        $manager = new EntityManager($metadata, new EntityClassRegistry($metadata, classes: [Article::class, Author::class]), new EntityHydrator(), $database);
+
+        self::assertSame(
+            'SELECT `a`.* FROM `wp_sympress_articles` `a` INNER JOIN `wp_sympress_authors` `au` ON `a`.`author_id` = `au`.`id`'
+            . " AND (`au`.`name` = 'A' OR `au`.`name` = 'B')",
+            $manager->createQuery('SELECT a FROM Article a JOIN a.author au WITH au.name = :n OR au.name = :m', ['n' => 'A', 'm' => 'B'])->getSQL(),
+        );
+
+        $manager->getRepository(Article::class)->matching(
+            Criteria::create()->where('e.title = :t OR e.title = :u')->andWhere('e.author = :au')->setParameters(['t' => 'x', 'u' => 'y', 'au' => 'author-1']),
+        );
+        self::assertSame(
+            "SELECT `e`.* FROM `wp_sympress_articles` `e` WHERE (`e`.`title` = 'x' OR `e`.`title` = 'y') AND (`e`.`author_id` = 'author-1')",
+            $database->queries[0],
         );
     }
 
