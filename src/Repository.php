@@ -8,6 +8,7 @@ use SymPress\Orm\Metadata\ClassMetadata;
 use SymPress\Orm\Query\Criteria;
 use SymPress\Orm\Query\QueryBuilder;
 
+/** @implements RepositoryInterface<object> */
 class Repository implements RepositoryInterface
 {
     public function __construct(

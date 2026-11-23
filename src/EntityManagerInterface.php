@@ -16,7 +16,11 @@ interface EntityManagerInterface
     /** @param class-string $entityClass */
     public function getClassMetadata(string $entityClass): ClassMetadata;
 
-    /** @param class-string $entityClass */
+    /**
+     * @template T of object
+     * @param class-string<T> $entityClass
+     * @return RepositoryInterface<T>
+     */
     public function getRepository(string $entityClass): RepositoryInterface;
 
     /** @param class-string $entityClass */
