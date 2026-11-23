@@ -147,12 +147,15 @@ final readonly class EntityHydrator
 
         $type = strtolower($column->type);
 
+        // A time column has no date; 1970-01-01 keeps the value of a row the same on every day.
+        $date = in_array($type, ['time', 'time_immutable'], true) ? '1970-01-01 ' : '';
+
         if (in_array($type, ['datetime_immutable', 'date_immutable', 'time_immutable'], true)) {
-            return new \DateTimeImmutable((string) $value);
+            return new \DateTimeImmutable($date . (string) $value);
         }
 
         if (in_array($type, ['datetime', 'date', 'time'], true)) {
-            return new \DateTime((string) $value);
+            return new \DateTime($date . (string) $value);
         }
 
         if (in_array($type, ['boolean', 'bool'], true)) {
