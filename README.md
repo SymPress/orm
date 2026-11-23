@@ -159,11 +159,11 @@ work, and `flush()` writes the changes.
 
 ```php
 use App\Mailer\Entity\EmailLog;
-use SymPress\Orm\EntityManager;
+use SymPress\Orm\EntityManagerInterface;
 
 final readonly class MailerService
 {
-    public function __construct(private EntityManager $entities)
+    public function __construct(private EntityManagerInterface $entities)
     {
     }
 
@@ -185,6 +185,15 @@ final readonly class MailerService
 Calling `persist()` does not immediately call `$wpdb->insert()` or
 `$wpdb->update()`. The entity is registered in the `UnitOfWork`. The SQL write
 happens during `flush()`.
+
+Type-hint `EntityManagerInterface` in application code; the container aliases
+it to the `EntityManager` service, and decorators and test doubles can implement
+it. It holds the application API; methods that only the ORM's own classes call,
+such as table name and identifier helpers, stay on `EntityManager`. Its
+`getRepository()` returns a `RepositoryInterface` with the read methods
+`find()`, `findAll()`, `findBy()`, `findOneBy()` and `matching()`; `save()`,
+`remove()` and `createQueryBuilder()` stay on the `Repository` base class,
+which `EntityManager::getRepository()` still returns.
 
 ## Change Tracking
 

@@ -31,6 +31,8 @@ $entityManager->flush();
 
 When no `wpdb` instance is passed, the ORM resolves the global `$wpdb` lazily through `ConnectionProvider` and `WpdbConnection`.
 
+`SymPress\Orm\EntityManagerInterface` is the type for consumers, decorators and test doubles; `EntityManager` implements it, and the container aliases the interface to the public `EntityManager` service. The interface holds the application API: metadata, repositories, `find()`, `persist()`, `remove()`, `flush()`, the identity-map and state methods, `refresh()`, `getReference()`, `lock()`, `transactional()`, the unit of work and event manager, query creation, DQL functions, output walkers and second-level cache eviction. Plumbing that only the ORM's own classes call stays on `EntityManager`: `registerManaged()`, `tablePrefix()`, `tableName()`, `quoteIdentifier()`, `parameterPlaceholder()`, `compileDqlFunctions()`, `applyOutputWalkers()`, `getIdentifierValue()`, `loadAssociationCollection()`, `countAssociationCollection()` and `getConnection()`. ORM internals (`Repository`, `QueryBuilder`, `Query`, `EntityHydrator`, `DqlCompiler`, `UnitOfWork`, collections) therefore keep the concrete type. Event args declare the interface in `getEntityManager()`; the object is the `EntityManager`.
+
 ### UnitOfWork
 
 `UnitOfWork` tracks entity state, identity-map entries, original data, scheduled insertions, explicit updates, removals, and collection snapshots. `flush()` is the only point where scheduled writes are pushed to the database.
@@ -66,6 +68,8 @@ Compiler resources include recursive entity directories (additions/removals), en
 ### Repository
 
 `Repository` provides `find()`, `findAll()`, `findBy()`, `findOneBy()`, `matching()`, `save()`, and `remove()`. Criteria and ordering field names are validated against metadata before they reach SQL generation.
+
+`RepositoryInterface` holds the read methods `find()`, `findAll()`, `findBy()`, `findOneBy()` and `matching()`, and `Repository` implements it. `EntityManagerInterface::getRepository()` returns the interface, typed by entity class for static analysis (`RepositoryInterface<EmailLog>`); `EntityManager::getRepository()` keeps returning `Repository`, so custom repositories extend it as before.
 
 ```php
 $queued = $entityManager
