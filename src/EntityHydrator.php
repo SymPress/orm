@@ -112,7 +112,10 @@ final readonly class EntityHydrator
         }
 
         if ($column->enumType !== null && is_subclass_of($column->enumType, \BackedEnum::class)) {
-            return $column->enumType::from($value);
+            // wpdb returns every column as a string; from() is strict about the backing type.
+            $backingType = (string) (new \ReflectionEnum($column->enumType))->getBackingType();
+
+            return $column->enumType::from($backingType === 'int' ? (int) $value : (string) $value);
         }
 
         $type = strtolower($column->type);

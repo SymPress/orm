@@ -22,6 +22,8 @@ use SymPress\Orm\Tests\Fixtures\MutableEmailLog;
 use SymPress\Orm\Tests\Fixtures\NumericRole;
 use SymPress\Orm\Tests\Fixtures\NumericUser;
 use SymPress\Orm\Tests\Fixtures\Playlist;
+use SymPress\Orm\Tests\Fixtures\PrioritizedTask;
+use SymPress\Orm\Tests\Fixtures\Priority;
 use SymPress\Orm\Tests\Fixtures\Student;
 use SymPress\Orm\Tests\Fixtures\Tenant;
 use SymPress\Orm\Tests\Fixtures\Track;
@@ -145,6 +147,17 @@ final class EntityManagerTest extends TestCase
         $entityManager->flush();
 
         self::assertSame([['table' => 'wp_sympress_tracks', 'where' => ['id' => 'track-1']]], $database->deleted);
+    }
+
+    public function testIntBackedEnumHydratesFromWpdbString(): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [PrioritizedTask::class]);
+        $database = new \wpdb();
+        $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), $database);
+        $database->resultRows = [['id' => 'task-1', 'priority' => '2']];
+
+        self::assertSame(Priority::High, $entityManager->find(PrioritizedTask::class, 'task-1')?->priority);
     }
 
     public function testRemoveSchedulesDeletionUntilFlush(): void
