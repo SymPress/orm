@@ -630,15 +630,16 @@ final class EntityManager implements EntityManagerInterface
     }
 
     /**
-     * The condition that restricts a query on a single-table subclass to rows of that class and its mapped
-     * subclasses, with the discriminator values bound; null for a hierarchy root or a class without inheritance.
+     * The condition that restricts a query on a single-table subclass to rows of the mapped classes that are it or
+     * extend it, with the discriminator values bound, or to no row if there are none; null for a hierarchy root or a
+     * class without inheritance.
      *
      * @internal
      * @param list<mixed> $parameters
      */
     public function discriminatorCondition(ClassMetadata $metadata, ?string $alias, array &$parameters): ?string
     {
-        if ($metadata->discriminatorColumn === null || $metadata->discriminatorValue === null || $metadata->rootClassName === $metadata->className) {
+        if ($metadata->discriminatorColumn === null || $metadata->rootClassName === null || $metadata->rootClassName === $metadata->className) {
             return null;
         }
 
@@ -648,6 +649,10 @@ final class EntityManager implements EntityManagerInterface
             if (is_a($className, $metadata->className, true)) {
                 $placeholders[] = DqlCompiler::bindParameter($value, $this, $parameters);
             }
+        }
+
+        if ($placeholders === []) {
+            return '1 = 0';
         }
 
         $column = $this->quoteIdentifier($metadata->discriminatorColumn);

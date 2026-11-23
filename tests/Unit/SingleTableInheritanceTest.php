@@ -14,7 +14,9 @@ use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Tests\Fixtures\Car;
 use SymPress\Orm\Tests\Fixtures\Garage;
+use SymPress\Orm\Tests\Fixtures\Motorized;
 use SymPress\Orm\Tests\Fixtures\SportsCar;
+use SymPress\Orm\Tests\Fixtures\Trailer;
 use SymPress\Orm\Tests\Fixtures\Vehicle;
 
 final class SingleTableInheritanceTest extends TestCase
@@ -35,6 +37,11 @@ final class SingleTableInheritanceTest extends TestCase
             public function get_results(string $query, string|int $output = ARRAY_A): array
             {
                 $this->selects[] = $query;
+
+                if (str_contains($query, 'WHERE 1 = 0')) {
+                    return [];
+                }
+
                 $kinds = preg_match('/`kind` IN \(([^)]*)\)/', $query, $match) === 1
                     ? array_map(static fn (string $kind): string => trim($kind, " '"), explode(',', $match[1]))
                     : null;
@@ -120,6 +127,20 @@ final class SingleTableInheritanceTest extends TestCase
         self::assertSame('DELETE `v` FROM `wp_sympress_vehicles` `v`', $manager->createQuery('DELETE FROM Vehicle v')->getSQL());
     }
 
+    public function testClassWithoutItsOwnDiscriminatorValueSeesOnlyItsSubclassRows(): void
+    {
+        $manager = $this->manager();
+
+        self::assertSame(['c1', 's1'], $this->ids($manager->getRepository(Motorized::class)->findAll()));
+        self::assertSame('SELECT `e`.* FROM `wp_sympress_vehicles` `e` WHERE `e`.' . self::CARS, $this->database->selects[0]);
+        self::assertSame('DELETE `m` FROM `wp_sympress_vehicles` `m` WHERE `m`.' . self::CARS, $manager->createQuery('DELETE FROM Motorized m')->getSQL());
+
+        // No mapped class is or extends Trailer, so no row can belong to it.
+        self::assertSame([], $manager->getRepository(Trailer::class)->findAll());
+        self::assertSame('SELECT `e`.* FROM `wp_sympress_vehicles` `e` WHERE 1 = 0', $this->database->selects[1]);
+        self::assertSame('DELETE `t` FROM `wp_sympress_vehicles` `t` WHERE 1 = 0', $manager->createQuery('DELETE FROM Trailer t')->getSQL());
+    }
+
     public function testFindAndReferencesOfASubclassIgnoreRowsOfAnotherClass(): void
     {
         $manager = $this->manager();
@@ -164,7 +185,7 @@ final class SingleTableInheritanceTest extends TestCase
     private function manager(?ArrayCache $cache = null): EntityManager
     {
         $metadata = new MetadataFactory();
-        $registry = new EntityClassRegistry($metadata, classes: [Vehicle::class, Car::class, SportsCar::class, Garage::class]);
+        $registry = new EntityClassRegistry($metadata, classes: [Vehicle::class, Motorized::class, Car::class, SportsCar::class, Trailer::class, Garage::class]);
 
         return new EntityManager($metadata, $registry, new EntityHydrator(), $this->database, secondLevelCache: $cache);
     }
