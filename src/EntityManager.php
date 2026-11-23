@@ -10,6 +10,7 @@ use SymPress\Orm\Cache\CacheInterface;
 use SymPress\Orm\Dbal\ConnectionProvider;
 use SymPress\Orm\Dbal\ConnectionInterface;
 use SymPress\Orm\Exception\EntityManagerClosedException;
+use SymPress\Orm\Exception\EntityNotFoundException;
 use SymPress\Orm\Exception\OptimisticLockException;
 use SymPress\Orm\Exception\PessimisticLockException;
 use SymPress\Orm\Event\EventManager;
@@ -377,6 +378,11 @@ final class EntityManager
 
         if ($managed !== null) {
             return $managed;
+        }
+
+        // A row of an inheritance root may be a subclass, and a lazy object cannot change its class once created.
+        if (array_any($metadata->discriminatorMap, static fn (string $class): bool => is_subclass_of($class, $entityClass))) {
+            return $this->find($entityClass, $id) ?? throw EntityNotFoundException::fromClassAndIdentifier($entityClass, $identifierData);
         }
 
         $reflection = new \ReflectionClass($entityClass);
