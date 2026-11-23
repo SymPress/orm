@@ -1167,6 +1167,7 @@ final class EntityManager
         }
 
         $reflection = new \ReflectionObject($source);
+        $metadata = $this->getClassMetadata($target::class);
 
         foreach ($reflection->getProperties() as $sourceProperty) {
             if (!$sourceProperty->isInitialized($source)) {
@@ -1185,7 +1186,15 @@ final class EntityManager
                 continue;
             }
 
-            $targetProperty->setValue($target, $sourceProperty->getValue($source));
+            $value = $sourceProperty->getValue($source);
+            $association = $metadata->associationForProperty($sourceProperty->getName());
+
+            // A lazy collection loads and snapshots through its owner, which has to be the managed target.
+            if ($value instanceof PersistentCollection && $value->owner() === $source && $association instanceof AssociationMetadata) {
+                $value = $this->hydrator->lazyCollection($target, $association, $this);
+            }
+
+            $targetProperty->setValue($target, $value);
         }
     }
 
