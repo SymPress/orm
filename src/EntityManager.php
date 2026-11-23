@@ -178,6 +178,8 @@ final class EntityManager implements EntityManagerInterface
     public function remove(object $entity): void
     {
         $this->assertOpen();
+        // Cascades, orphan removal and the remove events need the whole entity, and a missing row must fail here.
+        self::initialize($entity);
 
         $metadata = $this->getClassMetadata($entity::class);
         $this->dispatchLifecycleEvent(Events::PRE_REMOVE, $entity, $metadata);

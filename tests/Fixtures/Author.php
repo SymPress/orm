@@ -29,7 +29,7 @@ final class Author
         public string $id,
         #[Column(type: 'string', length: 100)]
         public string $name,
-        #[OneToMany(targetEntity: Article::class, mappedBy: 'author')]
+        #[OneToMany(targetEntity: Article::class, mappedBy: 'author', cascade: ['remove'])]
         public Collection $articles = new Collection(),
     ) {
     }

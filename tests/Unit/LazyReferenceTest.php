@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use SymPress\Orm\Cache\ArrayCache;
 use SymPress\Orm\EntityHydrator;
 use SymPress\Orm\EntityManager;
+use SymPress\Orm\Event\Events;
+use SymPress\Orm\Event\LifecycleEventArgs;
 use SymPress\Orm\Exception\EntityNotFoundException;
 use SymPress\Orm\Exception\OptimisticLockException;
 use SymPress\Orm\LockMode;
@@ -164,17 +166,49 @@ final class LazyReferenceTest extends TestCase
         $this->entityManager->lock($stale, LockMode::OPTIMISTIC, 2);
     }
 
-    public function testRemovingReferenceDeletesByIdentifierWithoutLoading(): void
+    public function testRemovingReferenceRemovesOrphans(): void
     {
-        // Cascading the orphan-removal collection would read it and load the playlist.
+        $this->database->rows = [
+            'wp_sympress_playlists' => [['id' => 'playlist-1']],
+            'wp_sympress_tracks' => [['id' => 'track-1', 'playlist_id' => 'playlist-1'], ['id' => 'track-2', 'playlist_id' => 'playlist-1']],
+        ];
         $playlist = $this->entityManager->getReference(Playlist::class, 'playlist-1');
 
         $this->entityManager->remove($playlist);
         $this->entityManager->flush();
 
-        self::assertTrue(self::isLazy($playlist));
-        self::assertSame([], $this->database->selects);
-        self::assertSame([['table' => 'wp_sympress_playlists', 'where' => ['id' => 'playlist-1']]], $this->database->deleted);
+        self::assertSame(['wp_sympress_tracks', 'wp_sympress_tracks', 'wp_sympress_playlists'], array_column($this->database->deleted, 'table'));
+    }
+
+    public function testRemovingReferenceCascadesAndLetsRemoveListenersReadIt(): void
+    {
+        $names = [];
+        $this->entityManager->getEventManager()->addEventListener(Events::POST_REMOVE, static function (LifecycleEventArgs $args) use (&$names): void {
+            $entity = $args->getEntity();
+            $names[] = $entity instanceof Author ? $entity->name : $entity::class;
+        });
+        $author = $this->entityManager->getReference(Author::class, 'author-1');
+
+        $this->entityManager->remove($author);
+        $this->entityManager->flush();
+
+        self::assertSame(['wp_sympress_articles', 'wp_sympress_authors'], array_column($this->database->deleted, 'table'));
+        self::assertSame([Article::class, 'Ada'], $names);
+        self::assertTrue($this->entityManager->isOpen());
+    }
+
+    public function testRemovingReferenceToMissingRowThrows(): void
+    {
+        $author = $this->entityManager->getReference(Author::class, 'missing');
+
+        try {
+            $this->entityManager->remove($author);
+            self::fail('Expected EntityNotFoundException.');
+        } catch (EntityNotFoundException) {
+        }
+
+        $this->entityManager->flush();
+        self::assertSame([], $this->database->deleted);
     }
 
     public function testMissingRowThrowsEntityNotFoundException(): void
