@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SymPress\Orm\Tests\Unit;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use SymPress\Orm\Cache\ArrayCache;
 use SymPress\Orm\EntityHydrator;
@@ -14,12 +15,15 @@ use SymPress\Orm\Event\LifecycleEventArgs;
 use SymPress\Orm\Exception\OptimisticLockException;
 use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\MetadataFactory;
+use SymPress\Orm\Tests\Fixtures\Address;
 use SymPress\Orm\Tests\Fixtures\Article;
 use SymPress\Orm\Tests\Fixtures\Author;
 use SymPress\Orm\Tests\Fixtures\Car;
 use SymPress\Orm\Tests\Fixtures\ExplicitEmailLog;
 use SymPress\Orm\Tests\Fixtures\Garage;
 use SymPress\Orm\Tests\Fixtures\Memo;
+use SymPress\Orm\Tests\Fixtures\Note;
+use SymPress\Orm\Tests\Fixtures\Profile;
 use SymPress\Orm\Tests\Fixtures\SportsCar;
 use SymPress\Orm\Tests\Fixtures\TypeCatalogEntity;
 use SymPress\Orm\Tests\Fixtures\Vehicle;
@@ -272,6 +276,39 @@ final class PersistExistingRowTest extends TestCase
         self::assertSame([['table' => 'wp_sympress_authors', 'data' => ['name' => 'From the managed instance'], 'where' => ['id' => 'ada']]], $this->database->updated);
     }
 
+    /** @return iterable<string, array{bool}> */
+    public static function profileRowExists(): iterable
+    {
+        yield 'new object' => [false];
+        yield 'existing row' => [true];
+    }
+
+    #[DataProvider('profileRowExists')]
+    public function testPersistThatThrowsInACascadeLeavesNothingScheduled(bool $rowExists): void
+    {
+        $this->database->rows['wp_sympress_notes'] = [['id' => 'n1', 'profile_id' => 'p0']];
+        $this->database->rows['wp_sympress_profiles'] = $rowExists ? [['id' => 'p1', 'billing_id' => null, 'shipping_id' => null]] : [];
+        $manager = $this->manager();
+        self::assertInstanceOf(Note::class, $manager->find(Note::class, 'n1'));
+        $profile = new Profile('p1');
+        // The new note n2 is cascaded first, then the second instance of the managed note n1 fails.
+        $profile->notes->add(new Note('n2', $profile));
+        $profile->notes->add(new Note('n1', $profile));
+
+        try {
+            $manager->persist($profile);
+            self::fail('Expected the second instance of n1 to be rejected.');
+        } catch (\LogicException) {
+        }
+
+        self::assertSame([], $manager->getUnitOfWork()->scheduledInsertions());
+        self::assertFalse($manager->contains($profile));
+        self::assertNull($manager->getUnitOfWork()->tryGetById($manager->getClassMetadata(Note::class), 'n2'));
+        $manager->flush();
+        self::assertSame([], $this->database->inserted);
+        self::assertSame([], $this->database->updated);
+    }
+
     /** @return array<string, mixed> */
     private static function memoRow(string $note): array
     {
@@ -291,6 +328,7 @@ final class PersistExistingRowTest extends TestCase
         $registry = new EntityClassRegistry($metadata, classes: [
             Article::class, Author::class, TypeCatalogEntity::class, VersionedEmailLog::class, ExplicitEmailLog::class,
             Vehicle::class, Car::class, SportsCar::class, Garage::class, Memo::class,
+            Address::class, Note::class, Profile::class,
         ]);
 
         return new EntityManager($metadata, $registry, new EntityHydrator(), $this->database, secondLevelCache: $cache);

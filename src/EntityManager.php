@@ -51,6 +51,9 @@ final class EntityManager implements EntityManagerInterface
     /** @var list<object>|null */
     private ?array $pendingRemovals = null;
 
+    /** @var list<object>|null */
+    private ?array $pendingPersists = null;
+
     /** @var array<class-string, object> */
     private array $entityListenerInstances = [];
 
@@ -152,7 +155,29 @@ final class EntityManager implements EntityManagerInterface
     public function persist(object $entity): void
     {
         $this->assertOpen();
+        // The outermost persist() undoes what it and its cascade registered when any part of it fails.
+        $outermost = $this->pendingPersists === null;
+        $this->pendingPersists ??= [];
 
+        try {
+            $this->persistEntity($entity);
+        } catch (\Throwable $throwable) {
+            if ($outermost) {
+                foreach ($this->pendingPersists as $registered) {
+                    $this->unitOfWork->detach($registered);
+                }
+            }
+
+            throw $throwable;
+        } finally {
+            if ($outermost) {
+                $this->pendingPersists = null;
+            }
+        }
+    }
+
+    private function persistEntity(object $entity): void
+    {
         $metadata = $this->getClassMetadata($entity::class);
 
         if ($metadata->readOnly) {
@@ -187,6 +212,7 @@ final class EntityManager implements EntityManagerInterface
             $this->hydrator->fillUninitialized($entity, $metadata, $row, $this);
             $data = $this->hydrator->extract($entity, $metadata, $this);
             $original = $this->existingRowData($metadata, $row, $data);
+            $this->trackPending($entity);
             $this->unitOfWork->persistExisting($entity, $metadata, $original);
 
             // persist() is the explicit request that DEFERRED_EXPLICIT change tracking waits for, if anything differs.
@@ -199,8 +225,17 @@ final class EntityManager implements EntityManagerInterface
         }
 
         $this->dispatchLifecycleEvent(Events::PRE_PERSIST, $entity, $metadata);
+        $this->trackPending($entity);
         $this->unitOfWork->persistNew($entity, $metadata, $this->hydrator->extract($entity, $metadata, $this));
         $this->cascade($entity, $metadata, 'persist');
+    }
+
+    private function trackPending(object $entity): void
+    {
+        // Only entities the unit of work did not know before are undone; a removed one keeps its state.
+        if ($this->pendingPersists !== null && $this->unitOfWork->entityState($entity, null) === null) {
+            $this->pendingPersists[] = $entity;
+        }
     }
 
     /**

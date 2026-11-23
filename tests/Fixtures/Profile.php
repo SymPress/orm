@@ -23,7 +23,7 @@ final class Profile
         #[ManyToOne(targetEntity: Address::class, cascade: ['remove'])]
         #[JoinColumn(name: 'billing_id', referencedColumnName: 'id', nullable: true)]
         public ?Address $billing = null,
-        #[OneToMany(targetEntity: Note::class, mappedBy: 'profile', cascade: ['remove'])]
+        #[OneToMany(targetEntity: Note::class, mappedBy: 'profile', cascade: ['persist', 'remove'])]
         public Collection $notes = new Collection(),
         #[ManyToOne(targetEntity: Address::class, cascade: ['remove'])]
         #[JoinColumn(name: 'shipping_id', referencedColumnName: 'id', nullable: true)]
