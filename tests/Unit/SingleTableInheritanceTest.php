@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace SymPress\Orm\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
+use SymPress\Orm\Cache\ArrayCache;
 use SymPress\Orm\EntityHydrator;
 use SymPress\Orm\EntityManager;
 use SymPress\Orm\Exception\EntityNotFoundException;
+use SymPress\Orm\Metadata\AssociationMetadata;
 use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Tests\Fixtures\Car;
@@ -130,12 +132,50 @@ final class SingleTableInheritanceTest extends TestCase
         $reference->garage;
     }
 
-    private function manager(): EntityManager
+    public function testToManyCollectionsOfASubclassAreFiltered(): void
+    {
+        $manager = $this->manager();
+        $garage = new Garage('g1');
+        $cars = $this->association(Garage::class, 'cars');
+        $rentals = $this->association(Garage::class, 'rentals');
+
+        self::assertSame(['c1', 's1'], $this->ids($manager->loadAssociationCollection($garage, $cars)));
+        self::assertStringEndsWith("WHERE `garage_id` = 'g1' AND " . self::CARS, $this->database->selects[0]);
+        $manager->loadAssociationCollection($garage, $rentals);
+        self::assertStringEndsWith("WHERE `j`.`garage_id` = 'g1' AND `e`." . self::CARS, $this->database->selects[1]);
+        $manager->countAssociationCollection($garage, $cars);
+        self::assertSame(["SELECT COUNT(*) FROM `wp_sympress_vehicles` WHERE `garage_id` = 'g1' AND " . self::CARS], $this->database->queries);
+    }
+
+    public function testSecondLevelCacheDoesNotAnswerASubclassLookupWithAnotherClass(): void
+    {
+        $manager = $this->manager(new ArrayCache());
+
+        self::assertInstanceOf(Vehicle::class, $manager->find(Vehicle::class, 'v1'));
+        self::assertInstanceOf(Car::class, $manager->find(Vehicle::class, 'c1'));
+        $manager->clear();
+        $this->database->resultRows = [];
+
+        self::assertInstanceOf(Car::class, $manager->find(Car::class, 'c1'), 'The cached car still answers.');
+        self::assertNull($manager->find(Car::class, 'v1'));
+        self::assertNull($manager->find(SportsCar::class, 'c1'));
+    }
+
+    private function manager(?ArrayCache $cache = null): EntityManager
     {
         $metadata = new MetadataFactory();
         $registry = new EntityClassRegistry($metadata, classes: [Vehicle::class, Car::class, SportsCar::class, Garage::class]);
 
-        return new EntityManager($metadata, $registry, new EntityHydrator(), $this->database);
+        return new EntityManager($metadata, $registry, new EntityHydrator(), $this->database, secondLevelCache: $cache);
+    }
+
+    /** @param class-string $className */
+    private function association(string $className, string $property): AssociationMetadata
+    {
+        $association = (new MetadataFactory())->getMetadataFor($className)->associationForProperty($property);
+        self::assertInstanceOf(AssociationMetadata::class, $association);
+
+        return $association;
     }
 
     /**
