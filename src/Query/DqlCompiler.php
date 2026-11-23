@@ -11,6 +11,7 @@ use SymPress\Orm\Metadata\ColumnMetadata;
 use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\JoinColumnMetadata;
 
+/** @internal */
 final readonly class DqlCompiler
 {
     private function __construct()

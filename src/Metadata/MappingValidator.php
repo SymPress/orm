@@ -7,6 +7,7 @@ namespace SymPress\Orm\Metadata;
 use SymPress\Orm\Exception\MappingException;
 use SymPress\Orm\Mapping\InheritanceType;
 
+/** @internal */
 final readonly class MappingValidator
 {
     public function __construct(private MetadataFactory $metadataFactory)

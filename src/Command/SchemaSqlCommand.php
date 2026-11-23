@@ -12,6 +12,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/** @internal */
 #[AsCommand(name: 'orm:schema:sql', description: 'Dump SQL generated from ORM entity metadata.')]
 final class SchemaSqlCommand extends Command
 {

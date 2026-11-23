@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SymPress\Orm\Query;
 
+/** @internal */
 final class DqlExtensionRegistry
 {
     /** @var array<string, callable(string): string> */

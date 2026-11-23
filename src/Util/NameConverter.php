@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SymPress\Orm\Util;
 
+/** @internal */
 final readonly class NameConverter
 {
     public function tableName(string $className): string

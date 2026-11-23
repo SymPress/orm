@@ -13,6 +13,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
+/** @internal */
 #[AsCommand(name: 'orm:migrations:diff', description: 'Generate a SymPress migration from ORM entity metadata.')]
 final class MigrationDiffCommand extends Command
 {

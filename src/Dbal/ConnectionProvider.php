@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SymPress\Orm\Dbal;
 
+/** @internal */
 final class ConnectionProvider
 {
     public function __construct(private ?ConnectionInterface $connection = null)
