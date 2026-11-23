@@ -461,7 +461,7 @@ final class QueryBuilder
     private function compileExpression(string $expression, array &$parameters): string
     {
         // A literal % has to reach wpdb::prepare() as %%; see DqlCompiler::unpreparedSql().
-        $mask = LiteralMask::mask(str_replace('%', '%%', $this->entityManager->compileDqlFunctions($expression)));
+        $mask = LiteralMask::expression(str_replace('%', '%%', $this->entityManager->compileDqlFunctions($expression)));
         $expression = preg_replace_callback(
             '/\b([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\b/',
             function (array $matches): string {
