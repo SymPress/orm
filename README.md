@@ -217,7 +217,9 @@ class of the inheritance hierarchy makes `persist()` throw a `LogicException`.
 `prePersist` does not run for an existing row, and a mapped property the object
 never initialized is not a value: it takes the row's value instead of writing
 `NULL`. `persist()` throws a `LogicException` when another instance with the
-same identifier is already managed; change that instance instead.
+same identifier is already managed, including an unloaded reference that a
+loaded association points at; `find()` the entity and change it instead. A
+`persist()` that throws leaves nothing scheduled.
 
 Type-hint `EntityManagerInterface` in application code; the container aliases
 it to the `EntityManager` service, and decorators and test doubles can implement

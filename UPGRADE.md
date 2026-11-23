@@ -2,7 +2,7 @@
 
 ## From 0.3.8 to 1.0
 
-These behaviour changes from 0.3.9 to 0.6.0 can require action. `CHANGELOG.md`
+These behaviour changes from 0.3.9 to 0.6.2 can require action. `CHANGELOG.md`
 lists every change.
 
 ### Queries
@@ -90,6 +90,13 @@ lists every change.
   - `persist()` throws a `LogicException` when another instance with the same
     identifier is already managed, for example one loaded with `find()`.
     Change that instance instead of persisting a second one.
+  - An unloaded reference counts as that managed instance (0.6.2): after an
+    article whose `author` points at `au1` was loaded,
+    `persist(new Author('au1', ...))` throws as well. `find()` the author and
+    change it instead.
+  - A `persist()` that throws schedules nothing (0.6.2): neither the object nor
+    what its cascade registered before the failure is written by a later
+    `flush()`.
 
 ### Public API
 
