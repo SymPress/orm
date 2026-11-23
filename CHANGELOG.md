@@ -6,6 +6,8 @@
 - A versioned object persisted for an existing row must carry the row's current version: a stale version fails with `OptimisticLockException` at `flush()` instead of overwriting the row, and the current version is written and incremented.
 - Under `DEFERRED_EXPLICIT` change tracking, `persist()` of an object that differs from its existing row is the explicit request, so the differences are written at the next `flush()`.
 - `persist()` throws a `LogicException` when the existing row belongs to another class of the inheritance hierarchy instead of attaching the object to it.
+- A mapped column, to-one or embeddable property that such an object never initialized is not a value: it takes the row's value before the object is attached, so it is not overwritten with `NULL` and is readable afterwards. `prePersist` does not run for an existing row, so a value that a `prePersist` callback sets for new rows is not set either. An explicitly assigned `null` is still written; uninitialized to-many collections are left alone.
+- `persist()` throws a `LogicException` naming class and identifier when another instance with the same identifier is already managed, before any row is read, instead of flushing both and letting the later update overwrite the other's changes. Persisting the managed instance itself is unchanged.
 - Owning many-to-many collections of such an object keep their behaviour: a collection that is not empty replaces the join rows, an empty one writes nothing. `getEntityState()` is unchanged.
 
 ## 0.5.9 — 2026-11-23
