@@ -121,13 +121,19 @@ final class EntityManager
             return $managed;
         }
 
+        return $this->load($metadata, $id);
+    }
+
+    /** Loads a row past the identity map; registerManaged() fills an unloaded reference with it. */
+    private function load(ClassMetadata $metadata, mixed $id): ?object
+    {
         $cached = $this->secondLevelCache?->get($this->entityCacheKey($metadata, $id));
 
         if (is_array($cached)) {
             return $this->registerManaged($this->hydrator->hydrate($metadata, $cached, $this), $metadata, $cached);
         }
 
-        return $this->getRepository($entityClass)->find($id);
+        return $this->getRepository($metadata->className)->find($id);
     }
 
     public function persist(object $entity): void
