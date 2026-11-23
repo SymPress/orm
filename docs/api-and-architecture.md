@@ -75,7 +75,7 @@ $queued = $entityManager
 
 ### QueryBuilder and DQL Compiler
 
-`QueryBuilder` compiles mapped entity paths into SQL. Parameters are converted into `wpdb` placeholders and are prepared only at execution time.
+`QueryBuilder` compiles mapped entity paths into SQL. Parameters are converted into `wpdb` placeholders and are prepared only at execution time, including parameters in `select()` expressions. A literal `%` in an expression is written as is; the compiler escapes it as `%%` for `wpdb::prepare()`.
 
 ```php
 $query = $entityManager

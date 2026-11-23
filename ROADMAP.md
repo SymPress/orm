@@ -1,6 +1,6 @@
 # Roadmap to 1.0.0
 
-Status: 0.3.8 (2026-11-23).
+Status: 0.3.9 (2026-11-23).
 
 1.0.0 freezes the contract of what the package already does: attribute mapping,
 the unit of work, repositories, the query builder with its DQL subset,
@@ -12,7 +12,7 @@ Semantic Versioning: no breaking change to the public API within 1.x.
 
 Each step is one pull request. Steps with a version ship in that release.
 
-- [ ] **0.3.9** Query builder: a literal `%` in expressions works together with
+- [x] **0.3.9** Query builder: a literal `%` in expressions works together with
   bound parameters, parameters in `select()` are bound, and `setMaxResults(0)`
   returns no rows instead of one.
 - [ ] Tests follow the real `wpdb::prepare()` semantics, and every column type is
