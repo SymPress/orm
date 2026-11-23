@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.5 — 2026-11-23
+
+- Skip `preFlush` and `postFlush` callbacks, entity listeners and events for references that were never loaded. A callback touching a property loaded every reference on every flush (N+1), and a reference to a deleted row made `flush()` throw `EntityNotFoundException`, roll back and close the entity manager; 0.3.8 flushed the same code.
+- Load an unloaded reference before an optimistic `lock()` check. The version read as empty, so `lock($reference, LockMode::OPTIMISTIC, 3)` always failed with `actual version ""`. Pessimistic locks still need only the identifier.
+- Load an unloaded reference in `remove()` (one `SELECT`). Cascade remove and orphan removal skipped its associations and left orphan rows, a `postRemove` listener reading a field failed with a misleading "detached" `LogicException` that closed the manager, and a reference to a missing row was deleted silently. A missing row now throws `EntityNotFoundException` at `remove()`. Behaviour change; see `UPGRADE.md`. Use DQL `DELETE` to delete without loading.
+
 ## 0.5.4 — 2026-11-23
 
 - Filter queries on a single-table subclass by its discriminator. They read the whole table: `getRepository(Dog::class)->findAll()` returned animals too, `find(Dog::class, 'a1')` returned an `Animal`, and DQL `DELETE FROM Dog d` and `UPDATE Dog d` changed rows of the whole hierarchy. A query whose entity is a subclass with a discriminator value now sees only rows whose discriminator is that class's value or the value of one of its mapped subclasses: the query builder and DQL `SELECT` (root and joined entities), DQL `UPDATE` and `DELETE`, `find()`, the row loader behind lazy references, and loading and counting of to-many collections. The values are bound as parameters. `find()` for a subclass with the identifier of another class's row returns `null`. Queries on the hierarchy root are unchanged. Behaviour change: subclass queries return and change fewer rows; see `UPGRADE.md`.
