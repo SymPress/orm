@@ -225,7 +225,7 @@ final class EntityClassRegistry
                 continue;
             }
 
-            if ($this->isAnonymousClass($tokens, $index)) {
+            if ($this->isNotClassDeclaration($tokens, $index)) {
                 continue;
             }
 
@@ -281,7 +281,7 @@ final class EntityClassRegistry
     }
 
     /** @param list<mixed> $tokens */
-    private function isAnonymousClass(array $tokens, int $classIndex): bool
+    private function isNotClassDeclaration(array $tokens, int $classIndex): bool
     {
         for ($index = $classIndex - 1; $index >= 0; $index--) {
             $token = $tokens[$index];
@@ -290,7 +290,8 @@ final class EntityClassRegistry
                 continue;
             }
 
-            return is_array($token) && $token[0] === T_NEW;
+            // `new class` is anonymous; `Foo::class` (e.g. in an attribute) is a class-name constant.
+            return is_array($token) && in_array($token[0], [T_NEW, T_DOUBLE_COLON], true);
         }
 
         return false;

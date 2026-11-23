@@ -17,6 +17,7 @@ use SymPress\Orm\Tests\Fixtures\CatalogMappedBase;
 use Symfony\Component\Config\Resource\FileResource;
 use SymPress\Orm\Tests\Fixtures\Dog;
 use SymPress\Orm\Tests\Fixtures\EmailLog;
+use SymPress\Orm\Tests\Fixtures\RepositoryLog;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Dumper\PhpDumper;
@@ -112,6 +113,13 @@ SCRIPT;
         self::assertSame('sympress_mailer_logs', $factory->getMetadataFor(EmailLog::class)->tableName);
         $registry->refreshDiscovery();
         self::assertContains(EmailLog::class, $registry->classes('default'));
+    }
+
+    public function testDiscoveryFindsEntitiesWithClassConstantsInAttributes(): void
+    {
+        $registry = new EntityClassRegistry(new MetadataFactory(), paths: [dirname(__DIR__) . '/Fixtures']);
+
+        self::assertContains(RepositoryLog::class, $registry->classes());
     }
 
     public function testDiscoveryDoesNotFollowSymlinkEntitySources(): void
