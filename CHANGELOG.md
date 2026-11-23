@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1 — 2026-11-24
+
+- Return `null` from `find()` for a wrong-class reference next to a loaded row. Since 0.5.9, `find(Car::class, 'c1')` followed by `getReference(SportsCar::class, 'c1')` registers a `SportsCar` reference next to the loaded `Car`, and `find(SportsCar::class, 'c1')` returned that reference instead of `null`. A loaded entity of the hierarchy now takes precedence over an unloaded reference of the requested class, so `find()` returns `null` without a query; `getReference()` still returns the same lazy reference, which fails on first access.
+
 ## 0.6.0 — 2026-11-23
 
 - Write an object persisted for an existing row. `persist()` and `Repository::save()` on an unmanaged object whose identifier already existed only counted the row and attached the object as it was, so `persist(new Setting('site', 'new value')); flush();` wrote nothing and only changes made after `persist()` were written. `persist()` now reads the row instead of counting it, the same single query, and `flush()` writes every column in which the object differs from the row, including to-one foreign keys, with the update events of any managed entity; an object equal to its row writes nothing. The row is normalized like the original data of an entity loaded with `find()`, so string values from `wpdb` do not differ from integers, floats, booleans, dates, JSON or enums. Behaviour change; see `UPGRADE.md`.
