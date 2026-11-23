@@ -18,6 +18,8 @@ use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Schema\SchemaSqlGenerator;
 use SymPress\Orm\Schema\SchemaTool;
+use SymPress\Orm\Tests\Fixtures\Article;
+use SymPress\Orm\Tests\Fixtures\Author;
 use SymPress\Orm\Tests\Fixtures\EmailLog;
 use SymPress\Orm\Tests\Fixtures\MailStatus;
 use SymPress\Orm\Tests\Fixtures\NumericRole;
@@ -48,7 +50,7 @@ final class OrmDatabaseTest extends TestCase
 
     private function cleanup(): void
     {
-        foreach (['sympress_mailer_logs', 'sympress_numeric_roles', 'orm_review_state', 'orm_review_state_history', 'orm_string_defaults'] as $name) {
+        foreach (['sympress_articles', 'sympress_authors', 'sympress_mailer_logs', 'sympress_numeric_roles', 'orm_review_state', 'orm_review_state_history', 'orm_string_defaults'] as $name) {
             $this->database->query($this->database->prepare('DROP TABLE IF EXISTS %i', $this->database->prefix . $name));
         }
     }
@@ -73,6 +75,27 @@ final class OrmDatabaseTest extends TestCase
         self::assertTrue($additive->requiresDestructiveUpdates('default'));
         $this->expectException(\SymPress\WordPress\Migration\Exception\MigrationOperationException::class);
         new SchemaMigrationFactory($additive)->create('default')->up();
+    }
+
+    public function testToOneReferenceLoadsOnFirstAccessWithRealWpdb(): void
+    {
+        $metadata = new MetadataFactory();
+        $entities = new EntityClassRegistry($metadata, classes: [Article::class, Author::class]);
+        $tool = new SchemaTool($metadata, $entities, new SchemaSqlGenerator(), $this->database);
+        self::assertTrue(new WordPressSqlExecutor($this->database)->execute($tool->getCreateSchemaSql()));
+        $manager = new EntityManager($metadata, $entities, new EntityHydrator(), $this->database);
+        $author = new Author('author-1', 'Ada');
+        $manager->persist($author);
+        $manager->persist(new Article('article-1', 'First', $author));
+        $manager->flush();
+        $manager->clear();
+
+        $article = $manager->find(Article::class, 'article-1');
+
+        self::assertInstanceOf(Article::class, $article);
+        self::assertTrue((new \ReflectionClass($article->author))->isUninitializedLazyObject($article->author));
+        self::assertSame('Ada', $article->author->name);
+        self::assertSame(1, $article->author->postLoadCalls);
     }
 
     public function testCompiledCatalogPersistsWithRealWpdbWithoutMappingReflection(): void
