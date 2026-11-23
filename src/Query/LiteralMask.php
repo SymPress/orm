@@ -63,8 +63,8 @@ final readonly class LiteralMask
         $mask = self::mask($fragment);
 
         // MySQL starts a -- comment only before whitespace or a control character; \x01 opens a masked literal.
-        // These reserved words are column names only after a dot.
-        if (preg_match('/;|\/\*|#|--(?=[\x00\x02-\x20\x7f]|$)|(?<!\.)\b(?:SELECT|TABLE|UNION|INTERSECT|EXCEPT)\b/i', $mask->code, $match) === 1) {
+        // These reserved words are column names only after a dot and parameter names only after a colon.
+        if (preg_match('/;|\/\*|#|--(?=[\x00\x02-\x20\x7f]|$)|(?<![.:])\b(?:SELECT|TABLE|UNION|INTERSECT|EXCEPT)\b/i', $mask->code, $match) === 1) {
             throw new \InvalidArgumentException(sprintf(
                 'Unsupported "%s" in DQL expression "%s"; statement separators, subselects, UNION and comments are rejected.',
                 trim($match[0]),

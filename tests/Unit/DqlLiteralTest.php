@@ -170,6 +170,20 @@ final class DqlLiteralTest extends TestCase
         self::assertStringEndsWith($expected, $manager->createQueryBuilder()->select('l')->from(EmailLog::class, 'l')->where($where)->getQuery()->getSQL());
     }
 
+    public function testNamedParametersNamedLikeRejectedKeywordsCompile(): void
+    {
+        $manager = $this->manager();
+        $where = 'l.status = :table AND l.id = :select AND l.id <> :union AND l.id <> :intersect AND l.id <> :except';
+        $parameters = ['table' => 'a', 'select' => 'b', 'union' => 'c', 'intersect' => 'd', 'except' => 'e'];
+        $expected = "WHERE `l`.`status` = 'a' AND `l`.`id` = 'b' AND `l`.`id` <> 'c' AND `l`.`id` <> 'd' AND `l`.`id` <> 'e'";
+
+        self::assertStringEndsWith($expected, $manager->createQuery('SELECT l FROM EmailLog l WHERE ' . $where, $parameters)->getSQL());
+        self::assertStringEndsWith(
+            $expected,
+            $manager->createQueryBuilder()->select('l')->from(EmailLog::class, 'l')->where($where)->setParameters($parameters)->getQuery()->getSQL(),
+        );
+    }
+
     private function manager(): EntityManager
     {
         $metadata = new MetadataFactory();
