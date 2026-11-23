@@ -108,6 +108,11 @@ final class QueryBuilder
 
     public function orWhere(string $predicate): self
     {
+        // The fragments are merged into one string here, so each is checked on its own before it loses its bounds.
+        foreach ([...$this->where, $predicate] as $fragment) {
+            LiteralMask::expression($fragment);
+        }
+
         $previous = $this->where === [] ? '1 = 0' : sprintf('(%s)', self::conjunction($this->where));
         $this->where = [sprintf('%s OR (%s)', $previous, $predicate)];
 

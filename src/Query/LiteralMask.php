@@ -56,7 +56,8 @@ final readonly class LiteralMask
     /**
      * Masks an expression fragment and rejects code that would end it or turn it into another statement: a ; ,
      * a subselect (SELECT or MySQL's TABLE), a set operation (UNION, INTERSECT, EXCEPT), or a comment, which cuts
-     * off whatever the builder appends after the fragment.
+     * off whatever the builder appends after the fragment, and unbalanced parentheses, which would close those the
+     * builder wraps the fragment in.
      */
     public static function expression(string $fragment): self
     {
@@ -70,6 +71,21 @@ final readonly class LiteralMask
                 trim($match[0]),
                 $fragment,
             ));
+        }
+
+        // The builder wraps fragments in parentheses where it combines them; a fragment must not close them.
+        $depth = 0;
+
+        foreach (str_split((string) preg_replace('/[^()]/', '', $mask->code)) as $parenthesis) {
+            $depth += $parenthesis === '(' ? 1 : -1;
+
+            if ($depth < 0) {
+                break;
+            }
+        }
+
+        if ($depth !== 0) {
+            throw new \InvalidArgumentException(sprintf('Unbalanced parentheses in DQL expression "%s".', $fragment));
         }
 
         return $mask;
