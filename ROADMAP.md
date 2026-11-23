@@ -1,6 +1,6 @@
 # Roadmap to 1.0.0
 
-Status: 0.5.0 (2026-11-23).
+Status: 0.5.1 (2026-11-23).
 
 1.0.0 freezes the contract of what the package already does: attribute mapping,
 the unit of work, repositories, the query builder with its DQL subset,
@@ -23,7 +23,7 @@ Each step is one pull request. Steps with a version ship in that release.
   through native PHP lazy objects.
 - [x] **0.5.0** `EntityManagerInterface` and `RepositoryInterface` for consumers,
   decorators and test doubles.
-- [ ] Internals are marked `@internal`. Everything else is public API.
+- [x] **0.5.1** Internals are marked `@internal`. Everything else is public API.
 - [ ] **0.5.1** Backward-compatibility policy, deprecation path, `UPGRADE.md`,
   `SECURITY.md` and the frozen column type catalog.
 - [ ] **1.0.0** Stable release.
