@@ -204,7 +204,7 @@ final class QueryBuilder
         $parameters = [];
         $sql = sprintf(
             'SELECT %s FROM %s %s',
-            $this->selectSql(),
+            $this->selectSql($parameters),
             $this->entityManager->quoteIdentifier($metadata->tableName($this->entityManager->tablePrefix())),
             $this->entityManager->quoteIdentifier($this->alias),
         );
@@ -426,7 +426,8 @@ final class QueryBuilder
         return $sql . ' AND ' . $this->compileExpression($condition, $parameters);
     }
 
-    private function selectSql(): string
+    /** @param list<mixed> $parameters */
+    private function selectSql(array &$parameters): string
     {
         if ($this->select === [] || $this->select === [$this->alias]) {
             return $this->entityManager->quoteIdentifier($this->alias) . '.*';
@@ -435,9 +436,7 @@ final class QueryBuilder
         $columns = [];
 
         foreach ($this->select as $select) {
-            /** @var list<mixed> $unused */
-            $unused = [];
-            $columns[] = $this->compileExpression($select, $unused);
+            $columns[] = $this->compileExpression($select, $parameters);
         }
 
         return implode(', ', $columns);

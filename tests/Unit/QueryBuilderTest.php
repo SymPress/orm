@@ -373,4 +373,27 @@ final class QueryBuilderTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $manager->createQuery('DELETE FROM EmailLog l WHERE l.id = :id', ['id' => new \stdClass()]);
     }
+
+    public function testSelectParametersAreBoundBeforeWhereParameters(): void
+    {
+        $compiled = $this->emailLogManager()->createQueryBuilder()
+            ->select('l.id', 'CONCAT(l.status, :suffix)')
+            ->from(EmailLog::class, 'l')
+            ->where('l.status = :status')
+            ->setParameters(['status' => 'queued', 'suffix' => '!'])
+            ->compile();
+
+        self::assertSame(
+            'SELECT `l`.`id`, CONCAT(`l`.`status`, %s) FROM `wp_sympress_mailer_logs` `l` WHERE `l`.`status` = %s',
+            $compiled->sql,
+        );
+        self::assertSame(['!', 'queued'], $compiled->parameters);
+    }
+
+    private function emailLogManager(): EntityManager
+    {
+        $metadata = new MetadataFactory();
+
+        return new EntityManager($metadata, new EntityClassRegistry($metadata, classes: [EmailLog::class]), new EntityHydrator(), new \wpdb());
+    }
 }
