@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.9 — 2026-11-23
+
+- Split DQL `SELECT` and `GROUP BY` lists only at commas outside parentheses. Since 0.5.8, legal DQL with a comma inside a function call, such as `SELECT CONCAT(a.title, a.id) FROM Article a`, `SELECT IFNULL(a.title, 'x'), a.id FROM ...` or `GROUP BY CONCAT(a.title, a.id)`, threw `Unbalanced parentheses`; it compiled in 0.5.5. The same split had kept a registered DQL function with more than one argument in a DQL `SELECT` from ever being translated; it now is. DQL clauses are also split only at keywords outside parentheses, so `HAVING GROUP_CONCAT(a.title ORDER BY a.id) ...` compiles.
+- Make `getReference()` independent of what is already managed. Since 0.5.7 it threw `EntityNotFoundException` at once when an entity of another class of the inheritance hierarchy with the same identifier was managed, so hydrating a to-one association pointing at a row of the wrong class threw during hydration, and failed a whole `findAll()`, only after that row had been loaded. It now returns a lazy reference that fails on first access in both cases. `find()` still returns `null` for a managed row of another class.
+
 ## 0.5.8 — 2026-11-23
 
 - Security: reject unbalanced parentheses in query builder fragments (`select()`, `where()`, `orWhere()`, `having()`, `groupBy()`, join conditions), `Criteria` expressions and DQL strings. Since 0.5.3 predicates are wrapped in parentheses where they are combined, and since 0.5.4 the discriminator condition of a single-table subclass is combined with them; a fragment such as `andWhere('a.x = 1) OR (1 = 1')` closed the wrapper early and let its `OR` escape both the other predicates and the discriminator filter. A fragment whose parentheses outside string literals do not balance, or close before they open, now throws `InvalidArgumentException`; `orWhere()` checks its fragments when it is called. Parentheses inside string literals are still allowed.
