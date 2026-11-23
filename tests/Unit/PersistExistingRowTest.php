@@ -251,6 +251,27 @@ final class PersistExistingRowTest extends TestCase
         self::assertSame([['table' => 'wp_sympress_memos', 'data' => ['note' => null, 'author_id' => null], 'where' => ['id' => 'm1']]], $this->database->updated);
     }
 
+    public function testIdentityManagedByAnotherInstanceIsRejected(): void
+    {
+        $manager = $this->manager();
+        $managed = $manager->find(Author::class, 'ada');
+        self::assertInstanceOf(Author::class, $managed);
+        $managed->name = 'From the managed instance';
+
+        try {
+            $manager->persist(new Author('ada', 'From a second instance'));
+            self::fail('Expected the second instance to be rejected.');
+        } catch (\LogicException $exception) {
+            self::assertStringContainsString(Author::class, $exception->getMessage());
+            self::assertStringContainsString('"ada"', $exception->getMessage());
+        }
+
+        // Persisting the managed instance itself stays allowed.
+        $manager->persist($managed);
+        $manager->flush();
+        self::assertSame([['table' => 'wp_sympress_authors', 'data' => ['name' => 'From the managed instance'], 'where' => ['id' => 'ada']]], $this->database->updated);
+    }
+
     /** @return array<string, mixed> */
     private static function memoRow(string $note): array
     {

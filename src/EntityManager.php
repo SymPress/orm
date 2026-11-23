@@ -167,6 +167,17 @@ final class EntityManager implements EntityManagerInterface
 
         $data = $this->hydrator->extract($entity, $metadata, $this);
         $id = $this->identifierFromData($metadata, $data);
+        $managed = $id === null ? null : $this->unitOfWork->tryGetById($metadata, $id);
+
+        // Two instances for one row would both be flushed, and the later update would silently overwrite the other.
+        if ($managed !== null && $managed !== $entity && $this->unitOfWork->contains($managed)) {
+            throw new \LogicException(sprintf(
+                'Cannot persist "%s" with identifier %s: another instance with this identifier is already managed; change that instance instead.',
+                $metadata->className,
+                (string) json_encode($id),
+            ));
+        }
+
         $row = $id === null ? null : $this->fetchRowByIdentifier($metadata, $id);
 
         // The row is the original data, so flush() writes what differs between the object and the row.
