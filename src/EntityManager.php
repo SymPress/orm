@@ -1564,6 +1564,12 @@ final class EntityManager implements EntityManagerInterface
             return [];
         }
 
+        $discriminator = $this->discriminatorCondition($targetMetadata, null, $parameters);
+
+        if ($discriminator !== null) {
+            $predicates[] = $discriminator;
+        }
+
         $sql = sprintf(
             'SELECT * FROM %s WHERE %s',
             $this->quoteIdentifier($targetMetadata->tableName($this->tablePrefix())),
@@ -1625,6 +1631,12 @@ final class EntityManager implements EntityManagerInterface
 
         if ($predicates === []) {
             return 0;
+        }
+
+        $discriminator = $this->discriminatorCondition($targetMetadata, null, $parameters);
+
+        if ($discriminator !== null) {
+            $predicates[] = $discriminator;
         }
 
         $sql = sprintf(
@@ -1696,6 +1708,12 @@ final class EntityManager implements EntityManagerInterface
 
         if ($targetConditions === [] || $ownerPredicates === []) {
             return [];
+        }
+
+        $discriminator = $this->discriminatorCondition($targetMetadata, 'e', $parameters);
+
+        if ($discriminator !== null) {
+            $ownerPredicates[] = $discriminator;
         }
 
         $sql = sprintf(
