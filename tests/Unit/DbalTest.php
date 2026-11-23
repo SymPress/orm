@@ -154,14 +154,7 @@ final class DbalTest extends TestCase
     public function testWpdbConnectionRejectsEmptyPreparedStatement(): void
     {
         // wpdb::prepare() returns '' when there are fewer arguments than placeholders.
-        $database = new class extends \wpdb {
-            public function prepare(string $query, mixed ...$args): string
-            {
-                return '';
-            }
-        };
-
         $this->expectException(\RuntimeException::class);
-        (new WpdbConnection($database))->prepare('SELECT %s, %s', 'one');
+        (new WpdbConnection(new \wpdb()))->prepare('SELECT %s, %s', 'one');
     }
 }
