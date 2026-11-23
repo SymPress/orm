@@ -1,6 +1,6 @@
 # Roadmap to 1.0.0
 
-Status: 0.3.9 (2026-11-23).
+Status: 0.3.10 (2026-11-23).
 
 1.0.0 freezes the contract of what the package already does: attribute mapping,
 the unit of work, repositories, the query builder with its DQL subset,
@@ -15,9 +15,9 @@ Each step is one pull request. Steps with a version ship in that release.
 - [x] **0.3.9** Query builder: a literal `%` in expressions works together with
   bound parameters, parameters in `select()` are bound, and `setMaxResults(0)`
   returns no rows instead of one.
-- [ ] Tests follow the real `wpdb::prepare()` semantics, and every column type is
-  hydrated from the string rows `wpdb` returns.
-- [ ] **0.3.10** DQL splits clauses outside string literals and rejects `;` and
+- [x] **0.3.10** Tests follow the real `wpdb::prepare()` semantics, and every
+  column type is hydrated from the string rows `wpdb` returns.
+- [ ] **0.3.11** DQL splits clauses outside string literals and rejects `;` and
   subselects instead of passing them through.
 - [ ] **0.4.0** To-one associations and `getReference()` load on first access
   through native PHP lazy objects.
@@ -63,7 +63,7 @@ These can be added later without a breaking change:
 | Entity manager and unit of work | Ready |
 | Repositories and criteria | Ready |
 | Associations and composite identifiers | Ready; to-one references load lazily from 0.4.0 |
-| Query builder and DQL subset | Limited until 0.3.10, see the steps above |
+| Query builder and DQL subset | Limited until 0.3.11, see the steps above |
 | Lifecycle callbacks and events | Ready |
 | Version columns and locking | Ready |
 | Schema tool and migration bridge | Ready for WordPress on MySQL and MariaDB |
