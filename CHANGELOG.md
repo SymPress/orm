@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.7 — 2026-11-23
+
+- Narrow queries on a mapped single-table class without a discriminator value of its own. Such a class, for example an abstract `Visual` between the root `Media` and the mapped `Photo` and `Video`, got no filter: `getRepository(Visual::class)->findAll()` read the whole table and DQL `DELETE FROM Visual v` compiled to a `DELETE` without `WHERE` that emptied it. Every non-root class of a hierarchy now sees the rows of the mapped classes that are it or extend it, and no row (`1 = 0`) when there are none. Root queries are unchanged. Behaviour change; see `UPGRADE.md`.
+- Remove orphans of a subclass of the association's target. With `orphanRemoval: true` on a one-to-many to a hierarchy root, removing a subclass child (a `Book` from `Shelf::$items` targeting `Item`) deleted nothing for it, because the identity map is keyed by concrete class and the lookup used the target class. Lookups now search the whole hierarchy, so `find()` and `getReference()` on a root or intermediate class also return an entity already managed as a subclass without querying again. `find()` returns `null` and `getReference()` throws `EntityNotFoundException` when the managed entity with that identifier is of another class.
+
 ## 0.5.6 — 2026-11-23
 
 - Skip an associated reference whose row is already gone in a cascaded remove. Since 0.5.5 `remove()` loads an unloaded reference and throws `EntityNotFoundException` for a missing row, and `cascade()` calls `remove()` for associated entities too: a parent with a `cascade: ['remove']` to-one whose key dangles (common in WordPress tables without foreign keys) could no longer be removed through the ORM, while the children visited before that association stayed scheduled and the next `flush()` deleted them and kept the parent. A cascaded remove now skips such a reference, since nothing is left to delete, and continues; it still throws when the row exists and a load further down failed. `remove()` of the entity a caller passes still throws for a missing row.
