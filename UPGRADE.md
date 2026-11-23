@@ -2,7 +2,7 @@
 
 ## From 0.3.8 to 1.0
 
-These behaviour changes from 0.3.9 to 0.5.1 can require action. `CHANGELOG.md`
+These behaviour changes from 0.3.9 to 0.5.3 can require action. `CHANGELOG.md`
 lists every change.
 
 ### Queries
@@ -21,6 +21,12 @@ lists every change.
 - **Literals stay literal (0.3.11).** Field paths, `:name` and `?1` parameters
   and DQL functions inside quoted strings are no longer rewritten. Write
   `l.subject = :subject`, not `l.subject = ':subject'`.
+- **Combined predicates (0.5.3).** Fragments passed to `where()`, `andWhere()`,
+  `having()`, `andHaving()`, join conditions, `orWhere()` and `Criteria` are
+  each parenthesized where they are combined, so an `OR` inside one no longer
+  binds across the `AND`. Queries that combine a fragment containing `OR` now
+  return fewer rows: the ones they were written to return. Check code or tests
+  that relied on the old results or compare generated SQL.
 
 ### Column types
 
