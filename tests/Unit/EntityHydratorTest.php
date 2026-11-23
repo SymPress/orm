@@ -37,6 +37,8 @@ final class EntityHydratorTest extends TestCase
             'day_immutable' => '2026-11-24',
             'at' => '2026-11-23 08:15:30',
             'at_immutable' => '2026-11-23 09:45:00',
+            'clock' => '08:15:30',
+            'clock_immutable' => '23:59:59',
             'status' => 'queued',
             'priority' => '2',
             'note' => null,
@@ -60,6 +62,8 @@ final class EntityHydratorTest extends TestCase
         self::assertSame('2026-11-24', $entity->dayImmutable->format('Y-m-d'));
         self::assertSame('2026-11-23 08:15:30', $entity->at->format('Y-m-d H:i:s'));
         self::assertSame('2026-11-23 09:45:00', $entity->atImmutable->format('Y-m-d H:i:s'));
+        self::assertSame('08:15:30', $entity->clock->format('H:i:s'));
+        self::assertSame('23:59:59', $entity->clockImmutable->format('H:i:s'));
         self::assertSame(MailStatus::Queued, $entity->status);
         self::assertSame(Priority::High, $entity->priority);
         self::assertNull($entity->note);
@@ -83,6 +87,8 @@ final class EntityHydratorTest extends TestCase
             'day_immutable' => '2026-11-24',
             'at' => '2026-11-23 08:15:30',
             'at_immutable' => '2026-11-23 09:45:00',
+            'clock' => '08:15:30',
+            'clock_immutable' => '23:59:59',
             'status' => 'queued',
             'priority' => 2,
             'note' => null,
