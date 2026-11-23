@@ -223,6 +223,26 @@ final class OrmDatabaseTest extends TestCase
         self::assertSame(['keyword'], $this->database->get_col('SELECT id FROM wp_sympress_mailer_logs'));
     }
 
+    public function testHostileStringAfterPercentDoesNotChangeTheMatchingRows(): void
+    {
+        $metadata = new MetadataFactory();
+        $entities = new EntityClassRegistry($metadata, classes: [EmailLog::class]);
+        $tool = new SchemaTool($metadata, $entities, new SchemaSqlGenerator(), $this->database);
+        self::assertTrue((new WordPressSqlExecutor($this->database))->execute($tool->getCreateSchemaSql()));
+        $manager = new EntityManager($metadata, $entities, new EntityHydrator(), new WpdbConnection($this->database));
+        $manager->persist(new EmailLog('even', new \DateTimeImmutable(), 'queued'));
+        $manager->persist(new EmailLog('odd', new \DateTimeImmutable(), 'queued'));
+        $manager->flush();
+        $manager->clear();
+        $ids = static fn (array $logs): array => array_map(static fn (EmailLog $log): string => $log->id, $logs);
+        $query = static fn (mixed $divisor): array => $ids($manager->createQueryBuilder()->select('l')->from(EmailLog::class, 'l')
+            ->where('LENGTH(l.id) %:n = 0')->setParameter('n', $divisor)->getQuery()->getResult());
+
+        self::assertSame(['even'], $query(2));
+        // Unquoted, the value read "% 2 OR 1=1 = 0" and matched the odd row instead; quoted, MySQL casts it to 2.
+        self::assertSame(['even'], $query('2 OR 1=1'));
+    }
+
     public function testSavepointsRollBackInnerWritesWhileCommittingOuterWrites(): void
     {
         $metadata = new MetadataFactory();
