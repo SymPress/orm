@@ -197,7 +197,7 @@ final class EntityManager implements EntityManagerInterface
         // Two instances for one row would both be flushed, and the later update would silently overwrite the other.
         if ($managed !== null && $managed !== $entity && $this->unitOfWork->contains($managed)) {
             throw new \LogicException(sprintf(
-                'Cannot persist "%s" with identifier %s: another instance with this identifier is already managed; change that instance instead.',
+                'Cannot persist "%s" with identifier %s: another instance with this identifier is already managed, possibly an unloaded reference that a loaded association points at; find() the entity and change it instead.',
                 $metadata->className,
                 (string) json_encode($id),
             ));

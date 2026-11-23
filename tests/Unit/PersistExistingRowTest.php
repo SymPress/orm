@@ -309,6 +309,18 @@ final class PersistExistingRowTest extends TestCase
         self::assertSame([], $this->database->updated);
     }
 
+    public function testUnloadedReferenceCountsAsTheManagedInstance(): void
+    {
+        $manager = $this->manager();
+        // The loaded article's author is an unloaded reference to ada.
+        self::assertInstanceOf(Article::class, $manager->find(Article::class, 'a1'));
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('unloaded reference');
+
+        $manager->persist(new Author('ada', 'New'));
+    }
+
     /** @return array<string, mixed> */
     private static function memoRow(string $note): array
     {
