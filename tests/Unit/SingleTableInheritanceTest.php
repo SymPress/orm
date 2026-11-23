@@ -106,6 +106,18 @@ final class SingleTableInheritanceTest extends TestCase
         );
     }
 
+    public function testDqlUpdateAndDeleteOnASubclassTouchOnlyItsRows(): void
+    {
+        $manager = $this->manager();
+
+        self::assertSame(
+            "UPDATE `wp_sympress_vehicles` `c` SET `c`.`garage_id` = NULL WHERE (`c`.`id` = 'v1' OR `c`.`id` = 'c1') AND `c`." . self::CARS,
+            $manager->createQuery('UPDATE Car c SET c.garage = NULL WHERE c.id = :a OR c.id = :b', ['a' => 'v1', 'b' => 'c1'])->getSQL(),
+        );
+        self::assertSame('DELETE `c` FROM `wp_sympress_vehicles` `c` WHERE `c`.' . self::CARS, $manager->createQuery('DELETE FROM Car c')->getSQL());
+        self::assertSame('DELETE `v` FROM `wp_sympress_vehicles` `v`', $manager->createQuery('DELETE FROM Vehicle v')->getSQL());
+    }
+
     public function testFindAndReferencesOfASubclassIgnoreRowsOfAnotherClass(): void
     {
         $manager = $this->manager();
