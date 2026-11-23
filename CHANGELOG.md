@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.6 — 2026-11-23
+
+- Skip an associated reference whose row is already gone in a cascaded remove. Since 0.5.5 `remove()` loads an unloaded reference and throws `EntityNotFoundException` for a missing row, and `cascade()` calls `remove()` for associated entities too: a parent with a `cascade: ['remove']` to-one whose key dangles (common in WordPress tables without foreign keys) could no longer be removed through the ORM, while the children visited before that association stayed scheduled and the next `flush()` deleted them and kept the parent. A cascaded remove now skips such a reference, since nothing is left to delete, and continues; it still throws when the row exists and a load further down failed. `remove()` of the entity a caller passes still throws for a missing row.
+- Schedule the cascade of `remove()` only once all of it succeeded. A `remove()` that throws, for example from a `preRemove` listener, now schedules nothing instead of leaving the children visited before the failure scheduled.
+
 ## 0.5.5 — 2026-11-23
 
 - Skip `preFlush` and `postFlush` callbacks, entity listeners and events for references that were never loaded. A callback touching a property loaded every reference on every flush (N+1), and a reference to a deleted row made `flush()` throw `EntityNotFoundException`, roll back and close the entity manager; 0.3.8 flushed the same code.
