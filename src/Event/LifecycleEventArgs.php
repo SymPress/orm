@@ -10,7 +10,10 @@ use SymPress\Orm\Metadata\ClassMetadata;
 
 class LifecycleEventArgs
 {
-    /** @param array<string, mixed> $changes */
+    /**
+     * @internal
+     * @param array<string, mixed> $changes
+     */
     public function __construct(
         private readonly object $entity,
         private readonly EntityManager $entityManager,
