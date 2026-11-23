@@ -2,7 +2,7 @@
 
 ## From 0.3.8 to 1.0
 
-These behaviour changes from 0.3.9 to 0.5.5 can require action. `CHANGELOG.md`
+These behaviour changes from 0.3.9 to 0.5.6 can require action. `CHANGELOG.md`
 lists every change.
 
 ### Queries
@@ -61,7 +61,8 @@ lists every change.
   issues one `SELECT` and cascades remove and orphan removal to its
   associations, as for an entity loaded with `find()`. A reference to a missing
   row throws `EntityNotFoundException` at `remove()` instead of deleting
-  nothing. Use DQL `DELETE` to delete rows without loading them.
+  nothing; since 0.5.6 a cascaded remove skips such a reference instead.
+  Use DQL `DELETE` to delete rows without loading them.
 
 ### Public API
 
