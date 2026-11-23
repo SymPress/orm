@@ -6,6 +6,7 @@ namespace SymPress\Orm\Bridge\Migration;
 
 use SymPress\Orm\Metadata\EntityClassRegistry;
 
+/** @internal */
 final readonly class OrmMigrationRegistrar
 {
     public function __construct(

@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace SymPress\Orm\Metadata;
 
-/** Immutable mapping objects constructed by the trusted compiled DI container. */
+/**
+ * Immutable mapping objects constructed by the trusted compiled DI container.
+ *
+ * @internal
+ */
 final readonly class CompiledEntityCatalog
 {
     /**

@@ -8,6 +8,8 @@ namespace SymPress\Orm\Collection;
  * @template TKey of array-key
  * @template TValue
  * @extends Collection<TKey, TValue>
+ *
+ * @internal
  */
 final class PersistentCollection extends Collection
 {

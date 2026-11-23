@@ -6,6 +6,7 @@ namespace SymPress\Orm\Schema;
 
 use SymPress\Orm\Metadata\ColumnMetadata;
 
+/** @internal */
 final readonly class SqlTypeMapper
 {
     public function sqlType(ColumnMetadata $column): string

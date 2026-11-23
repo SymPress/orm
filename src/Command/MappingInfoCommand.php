@@ -13,6 +13,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/** @internal */
 #[AsCommand(name: 'orm:mapping:info', description: 'List ORM entity mappings discovered by SymPress.')]
 final class MappingInfoCommand extends Command
 {
