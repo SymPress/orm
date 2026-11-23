@@ -116,10 +116,18 @@ final class EntityManager
         $this->assertOpen();
 
         $metadata = $this->getClassMetadata($entityClass);
-        $managed = $this->unitOfWork->tryGetById($entityClass, $this->normalizeIdentifierData($metadata, $id));
+        $identifierData = $this->normalizeIdentifierData($metadata, $id);
+        $managed = $this->unitOfWork->tryGetById($entityClass, $identifierData);
 
         if ($managed !== null) {
             return $managed;
+        }
+
+        $hydrating = $this->unitOfWork->hydratingMetadata($entityClass, $identifierData);
+
+        // Loading a row again while it is hydrated would never end; registerManaged() fills this reference from it.
+        if ($hydrating !== null) {
+            return $this->newReference($hydrating, $id, $identifierData);
         }
 
         return $this->load($metadata, $id);
@@ -385,7 +393,13 @@ final class EntityManager
             return $this->find($entityClass, $id) ?? throw EntityNotFoundException::fromClassAndIdentifier($entityClass, $identifierData);
         }
 
-        $reflection = new \ReflectionClass($entityClass);
+        return $this->newReference($metadata, $id, $identifierData);
+    }
+
+    /** @param array<string, mixed> $identifierData */
+    private function newReference(ClassMetadata $metadata, mixed $id, array $identifierData): object
+    {
+        $reflection = new \ReflectionClass($metadata->className);
         $entity = $reflection->newLazyGhost(function (object $reference) use ($metadata, $id, $identifierData): void {
             if (!$this->unitOfWork->isUninitializedReference($reference)) {
                 throw new \LogicException(sprintf(

@@ -39,6 +39,9 @@ final class UnitOfWork
     /** @var array<int, true> */
     private array $uninitializedReferences = [];
 
+    /** @var array<string, list<ClassMetadata>> concrete metadata of the rows being hydrated, by identifier key */
+    private array $hydrating = [];
+
     /** @param array<string, mixed> $data */
     public function registerManaged(object $entity, ClassMetadata $metadata, array $data): object
     {
@@ -77,6 +80,48 @@ final class UnitOfWork
     public function isUninitializedReference(object $entity): bool
     {
         return isset($this->uninitializedReferences[spl_object_id($entity)]);
+    }
+
+    /**
+     * @internal
+     * @param array<string, mixed> $row
+     */
+    public function beginHydration(ClassMetadata $metadata, array $row): ?string
+    {
+        $key = $this->identityKey($metadata, $row);
+
+        if ($key !== null) {
+            $this->hydrating[$key][] = $metadata;
+        }
+
+        return $key;
+    }
+
+    /** @internal */
+    public function endHydration(string $key): void
+    {
+        array_pop($this->hydrating[$key]);
+
+        if ($this->hydrating[$key] === []) {
+            unset($this->hydrating[$key]);
+        }
+    }
+
+    /**
+     * Returns the concrete metadata of a row of $className that is being hydrated further up the call stack.
+     *
+     * @internal
+     * @param array<string, mixed> $identifier
+     */
+    public function hydratingMetadata(string $className, array $identifier): ?ClassMetadata
+    {
+        foreach ($this->hydrating[$this->identifierKey($identifier)] ?? [] as $metadata) {
+            if (is_a($metadata->className, $className, true)) {
+                return $metadata;
+            }
+        }
+
+        return null;
     }
 
     /** @param array<string, mixed> $data */
