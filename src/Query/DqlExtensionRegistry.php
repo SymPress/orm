@@ -33,19 +33,22 @@ final class DqlExtensionRegistry
             return $expression;
         }
 
-        return preg_replace_callback(
+        // Functions are matched in code only; a compiler receives its arguments with their literals restored.
+        $mask = LiteralMask::mask($expression);
+
+        return $mask->restore(preg_replace_callback(
             '/\b([A-Z_][A-Z0-9_]*)\s*\(([^()]*)\)/i',
-            function (array $matches): string {
+            function (array $matches) use ($mask): string {
                 $compiler = $this->functions[strtoupper($matches[1])] ?? null;
 
                 if (!is_callable($compiler)) {
                     return $matches[0];
                 }
 
-                return $compiler(trim($matches[2]));
+                return $compiler(trim($mask->restore($matches[2])));
             },
-            $expression,
-        ) ?? $expression;
+            $mask->code,
+        ) ?? $mask->code);
     }
 
     public function applyOutputWalkers(string $sql): string
