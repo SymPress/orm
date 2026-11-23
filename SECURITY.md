@@ -24,7 +24,6 @@ will be handled with coordinated disclosure.
 expressions and DQL strings are SQL expression fragments. The ORM rewrites
 mapped field paths and parameters in them and rejects statement separators,
 subselects, comments and unbalanced parentheses, but it cannot tell a value from
-SQL. Never interpolate
-request data into them: bind every value as a parameter, and map user-chosen
-sort fields through an allow-list. See "Security Notes" in
+SQL. Never interpolate request data into them: bind every value as a parameter,
+and map user-chosen sort fields through an allow-list. See "Security Notes" in
 [docs/api-and-architecture.md](docs/api-and-architecture.md).
