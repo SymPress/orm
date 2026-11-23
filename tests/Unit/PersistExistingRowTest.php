@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SymPress\Orm\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
+use SymPress\Orm\Cache\ArrayCache;
 use SymPress\Orm\EntityHydrator;
 use SymPress\Orm\EntityManager;
 use SymPress\Orm\EntityState;
@@ -195,7 +196,30 @@ final class PersistExistingRowTest extends TestCase
         self::assertSame([], $this->database->updated);
     }
 
-    private function manager(): EntityManager
+    public function testRepositorySaveWritesThePersistedState(): void
+    {
+        $manager = $this->manager();
+
+        $manager->getRepository(Article::class)->save(new Article('a1', 'Saved', $manager->getReference(Author::class, 'ada')), flush: true);
+
+        self::assertSame([['table' => 'wp_sympress_articles', 'data' => ['title' => 'Saved'], 'where' => ['id' => 'a1']]], $this->database->updated);
+    }
+
+    public function testSecondLevelCacheDoesNotServeTheOldRowAfterTheWrite(): void
+    {
+        $manager = $this->manager(new ArrayCache());
+        self::assertSame('Old', $manager->find(Article::class, 'a1')?->title);
+        $manager->clear();
+
+        $manager->persist(new Article('a1', 'New', $manager->getReference(Author::class, 'ada')));
+        $manager->flush();
+        $manager->clear();
+
+        self::assertSame('New', $manager->find(Article::class, 'a1')?->title);
+        self::assertSame([], $this->database->inserted);
+    }
+
+    private function manager(?ArrayCache $cache = null): EntityManager
     {
         $metadata = new MetadataFactory();
         $registry = new EntityClassRegistry($metadata, classes: [
@@ -203,6 +227,6 @@ final class PersistExistingRowTest extends TestCase
             Vehicle::class, Car::class, SportsCar::class, Garage::class,
         ]);
 
-        return new EntityManager($metadata, $registry, new EntityHydrator(), $this->database);
+        return new EntityManager($metadata, $registry, new EntityHydrator(), $this->database, secondLevelCache: $cache);
     }
 }
