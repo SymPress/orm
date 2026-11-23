@@ -135,6 +135,16 @@ final readonly class DqlCompiler
         return new CompiledQuery(self::unpreparedSql($sql, $values), $values);
     }
 
+    /** The WHERE clause of a query, narrowed to a single-table subclass by its discriminator condition if it has one. */
+    public static function whereClause(?string $where, ?string $discriminator): string
+    {
+        return match (true) {
+            $discriminator === null => $where === null ? '' : ' WHERE ' . $where,
+            $where === null => ' WHERE ' . $discriminator,
+            default => sprintf(' WHERE (%s) AND %s', $where, $discriminator),
+        };
+    }
+
     private static function compileTail(string $tail, LiteralMask $mask, QueryBuilder $builder): void
     {
         if ($tail === '') {
