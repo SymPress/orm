@@ -314,7 +314,9 @@ $query = $entityManager
 $logs = $query->getResult();
 ```
 
-The generated SQL still goes through `$wpdb->prepare()`.
+The generated SQL still goes through `$wpdb->prepare()`. Write a literal `%`
+as is, for example `LIKE 'que%'`; the builder escapes it for `prepare()`.
+Parameters work in `select()` expressions too.
 
 Keep dynamic values out of query strings. The builder validates mapped field
 paths and prepares parameter values, but it cannot make interpolated strings
