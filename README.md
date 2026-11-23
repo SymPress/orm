@@ -67,7 +67,10 @@ and the explicit `wp migration adopt --retire-superseded` upgrade workflow.
   custom DQL functions, and output walkers
 - Criteria objects, scalar/array result helpers, iterable results, and optional
   query result caching
-- Optional second-level entity and association cache with simple cache regions
+- Optional second-level entity and association cache with simple cache regions.
+  Region versions live in the PHP process, so only request-scoped caches such as
+  the bundled `ArrayCache` are supported; a persistent cache would keep entries
+  that a region eviction in an earlier request invalidated
 - Schema SQL generation for WordPress-friendly `CREATE TABLE` statements
 - Live schema update SQL for missing and changed columns/indexes, opt-in
   destructive drops, and missing join tables, including single-table inheritance

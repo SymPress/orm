@@ -443,7 +443,11 @@ final class EntityManager
 
         $managedMetadata = $this->getClassMetadata($managed::class);
         $this->dispatchLifecycleEvent(Events::POST_LOAD, $managed, $managedMetadata);
-        $this->cacheEntity($managedMetadata, $this->hydrator->extract($managed, $managedMetadata, $this));
+
+        // A row read inside an open transaction may still be rolled back.
+        if ($this->secondLevelCache instanceof CacheInterface && !$this->connection()->isTransactionActive()) {
+            $this->cacheEntity($managedMetadata, $this->hydrator->extract($managed, $managedMetadata, $this));
+        }
 
         return $managed;
     }
