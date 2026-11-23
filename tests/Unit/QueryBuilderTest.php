@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace SymPress\Orm\Tests\Unit;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use SymPress\Orm\EntityHydrator;
 use SymPress\Orm\EntityManager;
 use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\MetadataFactory;
+use SymPress\Orm\Tests\Fixtures\Article;
+use SymPress\Orm\Tests\Fixtures\Author;
 use SymPress\Orm\Tests\Fixtures\Course;
 use SymPress\Orm\Tests\Fixtures\EmailLog;
 use SymPress\Orm\Tests\Fixtures\MailStatus;
@@ -39,6 +42,42 @@ final class QueryBuilderTest extends TestCase
             $compiled->sql,
         );
         self::assertSame(['queued', 10], $compiled->parameters);
+    }
+
+    #[DataProvider('unsupportedDql')]
+    public function testDqlSelectRejectsClausesItCannotCompile(string $dql): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [Article::class, Author::class]);
+        $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), new \wpdb());
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $entityManager->createQuery($dql, ['n' => 'Ada', 't' => 'x'])->getSQL();
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function unsupportedDql(): iterable
+    {
+        yield 'join with ON' => ['SELECT a FROM Article a JOIN a.author u ON u.name = :n WHERE a.title = :t'];
+        yield 'misspelled WHERE' => ['SELECT a FROM Article a WHER a.title = :t'];
+        yield 'LIMIT' => ['SELECT a FROM Article a LIMIT 5'];
+        yield 'LIMIT after ORDER BY' => ['SELECT a FROM Article a ORDER BY a.title DESC LIMIT 5'];
+        yield 'implicit join' => ['SELECT a FROM Article a, Author u WHERE u.name = :n'];
+    }
+
+    public function testDqlSelectStillCompilesJoinWithCondition(): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [Article::class, Author::class]);
+        $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), new \wpdb());
+
+        $sql = $entityManager
+            ->createQuery('SELECT a FROM Article a JOIN a.author u WITH u.name = :n WHERE a.title = :t ORDER BY a.title DESC', ['n' => 'Ada', 't' => 'x'])
+            ->getSQL();
+
+        self::assertStringContainsString("`u`.`name` = 'Ada'", $sql);
+        self::assertStringEndsWith("WHERE `a`.`title` = 'x' ORDER BY `a`.`title` DESC", $sql);
     }
 
     public function testItCompilesPositionalDqlParameters(): void
