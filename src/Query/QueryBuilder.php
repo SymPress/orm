@@ -461,7 +461,7 @@ final class QueryBuilder
     private function compileExpression(string $expression, array &$parameters): string
     {
         // A literal % has to reach wpdb::prepare() as %%; see DqlCompiler::unpreparedSql().
-        $expression = str_replace('%', '%%', $this->entityManager->compileDqlFunctions($expression));
+        $mask = LiteralMask::mask(str_replace('%', '%%', $this->entityManager->compileDqlFunctions($expression)));
         $expression = preg_replace_callback(
             '/\b([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\b/',
             function (array $matches): string {
@@ -496,14 +496,14 @@ final class QueryBuilder
 
                 throw new \InvalidArgumentException(sprintf('Unknown field "%s" on "%s".', $property, $metadata->className));
             },
-            $expression,
+            $mask->code,
         );
 
         if (!is_string($expression)) {
             return '';
         }
 
-        return preg_replace_callback(
+        return $mask->restore(preg_replace_callback(
             '/(?::([a-zA-Z_][a-zA-Z0-9_]*)|\?([0-9]+))/',
             function (array $matches) use (&$parameters): string {
                 $name = $matches[1] !== '' ? $matches[1] : ($matches[2] ?? '');
@@ -530,7 +530,7 @@ final class QueryBuilder
                 return DqlCompiler::bindParameter($value, $this->entityManager, $parameters);
             },
             $expression,
-        ) ?? '';
+        ) ?? '');
     }
 
     private function orderByClause(string $sort, string $order): string

@@ -268,7 +268,7 @@ final readonly class DqlCompiler
     ): string {
 
         // A literal % has to reach wpdb::prepare() as %%; see unpreparedSql().
-        $expression = str_replace('%', '%%', $entityManager->compileDqlFunctions($expression));
+        $mask = LiteralMask::mask(str_replace('%', '%%', $entityManager->compileDqlFunctions($expression)));
         $expression = preg_replace_callback(
             '/\b([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\b/',
             static function (array $matches) use ($aliases, $entityManager): string {
@@ -303,14 +303,14 @@ final readonly class DqlCompiler
 
                 throw new \InvalidArgumentException(sprintf('Unknown field "%s" on "%s".', $property, $metadata->className));
             },
-            $expression,
+            $mask->code,
         );
 
         if (!is_string($expression)) {
             return '';
         }
 
-        return preg_replace_callback(
+        return $mask->restore(preg_replace_callback(
             '/(?::([a-zA-Z_][a-zA-Z0-9_]*)|\?([0-9]+))/',
             static function (array $matches) use ($queryParameters, $entityManager, &$values): string {
                 $name = $matches[1] !== '' ? $matches[1] : ($matches[2] ?? '');
@@ -337,7 +337,7 @@ final readonly class DqlCompiler
                 return self::bindParameter($value, $entityManager, $values);
             },
             $expression,
-        ) ?? '';
+        ) ?? '');
     }
 
     /**
