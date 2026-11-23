@@ -2,7 +2,7 @@
 
 ## From 0.3.8 to 1.0
 
-These behaviour changes from 0.3.9 to 0.5.6 can require action. `CHANGELOG.md`
+These behaviour changes from 0.3.9 to 0.5.7 can require action. `CHANGELOG.md`
 lists every change.
 
 ### Queries
@@ -34,6 +34,9 @@ lists every change.
   that queried a subclass to reach rows of the whole hierarchy has to query the
   root class instead. `find()` for a subclass with the identifier of another
   class's row returns `null`.
+  Since 0.5.7 this also holds for a mapped class without a discriminator value
+  of its own, such as an abstract intermediate class: it sees the rows of the
+  mapped classes that extend it, or none.
 
 ### Column types
 
