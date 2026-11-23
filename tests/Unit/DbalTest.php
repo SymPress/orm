@@ -18,8 +18,21 @@ final class DbalTest extends TestCase
         self::assertSame('`post_id`', $platform->quoteIdentifier('post_id'));
         self::assertSame('%d', $platform->parameterPlaceholder(123));
         self::assertSame('%d', $platform->parameterPlaceholder(true));
-        self::assertSame('%f', $platform->parameterPlaceholder(12.5));
         self::assertSame('%s', $platform->parameterPlaceholder('queued'));
+    }
+
+    public function testFloatParametersKeepFullPrecision(): void
+    {
+        $database = new \wpdb();
+        $connection = new WpdbConnection($database);
+        $placeholder = $connection->platform()->parameterPlaceholder(0.0000125);
+
+        $connection->executeStatement(sprintf('UPDATE t SET rate = %1$s WHERE a = %1$s', $placeholder), 0.0000125, 0.1234567891);
+
+        self::assertSame(["UPDATE t SET rate = '1.25e-5' WHERE a = '0.1234567891'"], $database->queries);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $connection->executeStatement('SELECT %s', NAN);
     }
 
     public function testWpdbConnectionKeepsWpdbAsRuntime(): void

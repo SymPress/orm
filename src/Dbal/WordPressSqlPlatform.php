@@ -21,10 +21,6 @@ final readonly class WordPressSqlPlatform implements SqlPlatformInterface
             return '%d';
         }
 
-        if (is_float($value)) {
-            return '%f';
-        }
-
         return '%s';
     }
 
