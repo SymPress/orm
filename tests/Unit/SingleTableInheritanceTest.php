@@ -34,6 +34,9 @@ final class SingleTableInheritanceTest extends TestCase
             /** @var list<string> */
             public array $selects = [];
 
+            /** @var list<array<string, mixed>> */
+            public array $garages = [];
+
             public function get_results(string $query, string|int $output = ARRAY_A): array
             {
                 $this->selects[] = $query;
@@ -48,7 +51,7 @@ final class SingleTableInheritanceTest extends TestCase
                 $id = preg_match("/`id` = '([^']*)'/", $query, $match) === 1 ? $match[1] : null;
 
                 return array_values(array_filter(
-                    $this->resultRows,
+                    str_contains($query, 'FROM `wp_sympress_garages`') ? $this->garages : $this->resultRows,
                     static fn (array $row): bool => ($kinds === null || in_array($row['kind'] ?? null, $kinds, true))
                         && ($id === null || $row['id'] === $id),
                 ));
@@ -180,6 +183,56 @@ final class SingleTableInheritanceTest extends TestCase
         self::assertInstanceOf(Car::class, $manager->find(Car::class, 'c1'), 'The cached car still answers.');
         self::assertNull($manager->find(Car::class, 'v1'));
         self::assertNull($manager->find(SportsCar::class, 'c1'));
+    }
+
+    public function testOrphanRemovalDeletesChildrenOfASubclassOfTheTarget(): void
+    {
+        $this->database->garages = [['id' => 'g1']];
+        $manager = $this->manager();
+        $garage = $manager->find(Garage::class, 'g1');
+        self::assertInstanceOf(Garage::class, $garage);
+
+        foreach ($garage->cars->toArray() as $car) {
+            $garage->cars->removeElement($car);
+        }
+
+        $manager->flush();
+
+        // s1 is a SportsCar, a subclass of the association's target Car.
+        self::assertSame(['c1', 's1'], array_map(static fn (array $deleted): mixed => $deleted['where']['id'], $this->database->deleted));
+    }
+
+    public function testIdentityMapAnswersLookupsThroughAnyClassOfTheHierarchy(): void
+    {
+        $manager = $this->manager();
+        $sportsCar = $manager->find(Car::class, 's1');
+        $car = $manager->find(Vehicle::class, 'c1');
+        self::assertInstanceOf(SportsCar::class, $sportsCar);
+        self::assertInstanceOf(Car::class, $car);
+        $this->database->selects = [];
+
+        self::assertSame($sportsCar, $manager->find(Vehicle::class, 's1'));
+        self::assertSame($sportsCar, $manager->find(SportsCar::class, 's1'));
+        self::assertSame($sportsCar, $manager->getReference(Vehicle::class, 's1'));
+        self::assertSame($car, $manager->getReference(Car::class, 'c1'));
+        // c1 is a managed Car, so it is no SportsCar.
+        self::assertNull($manager->find(SportsCar::class, 'c1'));
+        self::assertSame([], $this->database->selects);
+
+        $this->expectException(EntityNotFoundException::class);
+        $manager->getReference(SportsCar::class, 'c1');
+    }
+
+    public function testUnloadedReferenceOfAnotherClassDoesNotAnswerAHierarchyLookup(): void
+    {
+        $manager = $this->manager();
+        // A guess: the row c1 is a Car, not a SportsCar.
+        $guess = $manager->getReference(SportsCar::class, 'c1');
+
+        $car = $manager->find(Vehicle::class, 'c1');
+
+        self::assertInstanceOf(Car::class, $car);
+        self::assertNotSame($guess, $car);
     }
 
     private function manager(?ArrayCache $cache = null): EntityManager

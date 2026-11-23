@@ -342,12 +342,29 @@ final class UnitOfWork
     }
 
     /**
+     * Returns the managed entity with that identity in the class's inheritance hierarchy, which may be of another
+     * class of it: the map is keyed by concrete class, a lookup names the requested or target class.
+     *
      * @internal
-     * @param class-string $className
      */
-    public function tryGetById(string $className, mixed $id): ?object
+    public function tryGetById(ClassMetadata $metadata, mixed $id): ?object
     {
-        return $this->identityMap[$className][$this->identifierKey($id)] ?? null;
+        $key = $this->identifierKey($id);
+
+        if (isset($this->identityMap[$metadata->className][$key])) {
+            return $this->identityMap[$metadata->className][$key];
+        }
+
+        foreach ([$metadata->rootClassName, ...array_values($metadata->discriminatorMap)] as $className) {
+            $entity = $className === null ? null : $this->identityMap[$className][$key] ?? null;
+
+            // An unloaded reference of another class is only a guess at the row's class, not proof of it.
+            if ($entity !== null && !$this->isUninitializedReference($entity)) {
+                return $entity;
+            }
+        }
+
+        return null;
     }
 
     /** @return array<string, mixed> */
