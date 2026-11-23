@@ -18,6 +18,21 @@ final readonly class EntityHydrator
     public function hydrate(ClassMetadata $metadata, array $row, ?EntityManager $entityManager = null): object
     {
         $metadata = $this->resolveDiscriminatorMetadata($metadata, $row, $entityManager);
+        // While the row is built, an association that leads back to it gets a reference instead of loading it again.
+        $key = $entityManager?->getUnitOfWork()->beginHydration($metadata, $row);
+
+        try {
+            return $this->instantiate($metadata, $row, $entityManager);
+        } finally {
+            if ($key !== null) {
+                $entityManager?->getUnitOfWork()->endHydration($key);
+            }
+        }
+    }
+
+    /** @param array<string, mixed> $row */
+    private function instantiate(ClassMetadata $metadata, array $row, ?EntityManager $entityManager): object
+    {
         $reflection = new \ReflectionClass($metadata->className);
         $constructor = $reflection->getConstructor();
 
