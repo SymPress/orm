@@ -169,7 +169,7 @@ A query on a single-table subclass sees only rows whose discriminator is the val
 
 ## Associations and Collections
 
-To-many associations can use `Collection` or `PersistentCollection`. Persistent collections load lazily through the entity manager and can count rows without full initialization when only a count is needed.
+Type to-many association properties as `Collection`. Loaded entities hold the internal `PersistentCollection` subclass, which loads lazily through the entity manager and can count rows without full initialization when only a count is needed.
 
 Owning many-to-many collections are synchronized during `flush()`. The ORM compares identifier snapshots and skips unchanged collections, which avoids delete-and-reinsert work on repeated flushes.
 
@@ -177,7 +177,7 @@ Owning many-to-many collections are synchronized during `flush()`. The ORM compa
 
 `getReference()` returns the managed instance if there is one. Otherwise it creates a native lazy ghost (`ReflectionClass::newLazyGhost()`), sets the identifier properties without initializing it and registers it in the unit of work as an uninitialized reference. To-one associations are hydrated as such references. The first access to any other property runs the `find()` loader (second-level cache, then one `SELECT`), which hydrates the ghost in place, records its original data and dispatches `postLoad`. A missing row throws `EntityNotFoundException`; the ghost stays unloaded. When another query loads the row first, `registerManaged()` fills the ghost from that row without a second query.
 
-ORM internals read only the identifier of an unloaded reference: change detection, cascades, foreign-key extraction, `contains()`, `detach()`, `clear()` and `remove()` neither load it nor query. Cascades and orphan removal therefore do not walk its associations; `remove()` of an unloaded reference deletes only its own row.
+ORM internals read only the identifier of an unloaded reference: `flush()` change detection and many-to-many synchronization, foreign-key extraction, pessimistic locks, `contains()`, `detach()` and `clear()` neither load it nor query, and `flush()` skips its `preFlush` and `postFlush` callbacks, listeners and events, because it has no state to flush. `remove()` and an optimistic `lock()` load it first (one `SELECT`): cascades, orphan removal and the remove events then see the whole entity, the version is compared with the row, and a missing row throws `EntityNotFoundException`. Use DQL `DELETE` to delete rows without loading them.
 
 A reference to an inheritance root whose discriminator map lists subclasses is loaded eagerly, because the row may belong to a subclass (or the root may be abstract) and a lazy object cannot change its class. If that load (or a `fetch: EAGER` association) reaches a row that is still being hydrated, as in rows referencing each other or themselves, it gets a lazy reference of that row's concrete class, which is filled when the row is complete, so every row is selected once. A reference detached by `clear()`, `detach()` or `close()` keeps its identifier and throws a `LogicException` on first access to another property instead of loading; load the entity again with `find()`.
 

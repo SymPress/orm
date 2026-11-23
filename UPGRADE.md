@@ -2,7 +2,7 @@
 
 ## From 0.3.8 to 1.0
 
-These behaviour changes from 0.3.9 to 0.5.4 can require action. `CHANGELOG.md`
+These behaviour changes from 0.3.9 to 0.5.5 can require action. `CHANGELOG.md`
 lists every change.
 
 ### Queries
@@ -57,6 +57,11 @@ lists every change.
   - `getReference()` for an inheritance root whose discriminator map lists
     subclasses queries at once and throws `EntityNotFoundException` for a
     missing row.
+- **`remove()` loads references (0.5.5).** `remove()` of an unloaded reference
+  issues one `SELECT` and cascades remove and orphan removal to its
+  associations, as for an entity loaded with `find()`. A reference to a missing
+  row throws `EntityNotFoundException` at `remove()` instead of deleting
+  nothing. Use DQL `DELETE` to delete rows without loading them.
 
 ### Public API
 
