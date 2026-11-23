@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.8 — 2026-11-23
+
+- Security: reject unbalanced parentheses in query builder fragments (`select()`, `where()`, `orWhere()`, `having()`, `groupBy()`, join conditions), `Criteria` expressions and DQL strings. Since 0.5.3 predicates are wrapped in parentheses where they are combined, and since 0.5.4 the discriminator condition of a single-table subclass is combined with them; a fragment such as `andWhere('a.x = 1) OR (1 = 1')` closed the wrapper early and let its `OR` escape both the other predicates and the discriminator filter. A fragment whose parentheses outside string literals do not balance, or close before they open, now throws `InvalidArgumentException`; `orWhere()` checks its fragments when it is called. Parentheses inside string literals are still allowed.
+
 ## 0.5.7 — 2026-11-23
 
 - Narrow queries on a mapped single-table class without a discriminator value of its own. Such a class, for example an abstract `Visual` between the root `Media` and the mapped `Photo` and `Video`, got no filter: `getRepository(Visual::class)->findAll()` read the whole table and DQL `DELETE FROM Visual v` compiled to a `DELETE` without `WHERE` that emptied it. Every non-root class of a hierarchy now sees the rows of the mapped classes that are it or extend it, and no row (`1 = 0`) when there are none. Root queries are unchanged. Behaviour change; see `UPGRADE.md`.
