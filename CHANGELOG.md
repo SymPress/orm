@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2 — 2026-11-23
+
+- Hydrate `time` and `time_immutable` columns on the date `1970-01-01`, as Doctrine does. They got the current date, so the same row yielded a different object on every day and comparisons with a stored or cached value broke after midnight. Behaviour change: code that read the date part of a time value now gets `1970-01-01`. Writing back as `H:i:s` is unchanged.
+
 ## 0.4.1 — 2026-11-23
 
 - Load rows that reference each other or themselves once. Since 0.4.0 a reference to an inheritance root with subclasses loads eagerly, and `fetch: EAGER` associations always did; when two such rows pointed at each other (`Person.spouse`) or a row at itself, loading never ended. A row that is still being hydrated now gets a lazy reference of its concrete class, filled from the same row.
