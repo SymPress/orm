@@ -110,6 +110,19 @@ final class LazyReferenceTest extends TestCase
         self::assertSame(['title' => 'Changed'], $this->database->updated[0]['data']);
     }
 
+    public function testRemovingReferenceDeletesByIdentifierWithoutLoading(): void
+    {
+        // Cascading the orphan-removal collection would read it and load the playlist.
+        $playlist = $this->entityManager->getReference(Playlist::class, 'playlist-1');
+
+        $this->entityManager->remove($playlist);
+        $this->entityManager->flush();
+
+        self::assertTrue(self::isLazy($playlist));
+        self::assertSame([], $this->database->selects);
+        self::assertSame([['table' => 'wp_sympress_playlists', 'where' => ['id' => 'playlist-1']]], $this->database->deleted);
+    }
+
     public function testMissingRowThrowsEntityNotFoundException(): void
     {
         $author = $this->entityManager->getReference(Author::class, 'missing');

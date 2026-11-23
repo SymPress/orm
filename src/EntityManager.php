@@ -1455,7 +1455,8 @@ final class EntityManager
     {
         $property = (new \ReflectionObject($entity))->getProperty($propertyName);
 
-        return $property->isInitialized($entity) ? $property->getValue($entity) : null;
+        // An unloaded reference has no associations to cascade or synchronize yet.
+        return !$property->isLazy($entity) && $property->isInitialized($entity) ? $property->getValue($entity) : null;
     }
 
     /** @return list<object> */
