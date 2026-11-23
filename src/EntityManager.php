@@ -445,6 +445,8 @@ final class EntityManager implements EntityManagerInterface
                 throw OptimisticLockException::notVersioned($entity);
             }
 
+            // The version is not loaded yet; a pessimistic lock needs only the identifier and stays lazy.
+            self::initialize($entity);
             $data = $this->hydrator->extract($entity, $metadata, $this);
             $actual = $data[$version->columnName] ?? null;
 
@@ -1531,6 +1533,12 @@ final class EntityManager implements EntityManagerInterface
     private static function isUnloaded(object $entity): bool
     {
         return (new \ReflectionClass($entity))->isUninitializedLazyObject($entity);
+    }
+
+    /** Loads an unloaded reference through its initializer: one SELECT, EntityNotFoundException for a missing row. */
+    private static function initialize(object $entity): void
+    {
+        (new \ReflectionClass($entity))->initializeLazyObject($entity);
     }
 
     private function propertyValue(object $entity, string $propertyName): mixed
