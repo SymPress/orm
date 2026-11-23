@@ -26,7 +26,7 @@ final class DqlLiteralTest extends TestCase
             ['id' => 'a-1'],
         )->getSQL();
 
-        self::assertStringContainsString("AND `u`.`name` = 'x WHERE y' WHERE", $sql);
+        self::assertStringContainsString("AND (`u`.`name` = 'x WHERE y') WHERE", $sql);
         self::assertStringEndsWith(
             "WHERE `a`.`title` = 'p JOIN a.author q GROUP BY a.id HAVING FROM' AND `a`.`id` = 'a-1' ORDER BY `a`.`title` DESC",
             $sql,
