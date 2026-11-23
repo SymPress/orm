@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1 — 2026-11-23
+
+- Mark internals `@internal`. From 1.0.0 on, everything not marked `@internal` is public API under Semantic Versioning; internals may change in any release. The markers are docblocks only and change no behaviour, signature or visibility.
+- Internal classes: `Query\DqlCompiler`, `Query\LiteralMask`, `Query\DqlExtensionRegistry`, `Dbal\ConnectionProvider`, `Compiler\EntityCatalogPass`, `Metadata\CompiledEntityCatalog`, `Metadata\MappingValidator`, `Collection\PersistentCollection` (type-hint `Collection`), `Schema\SqlTypeMapper`, `Util\NameConverter`, `Bridge\Migration\OrmMigrationRegistrar` and the console command classes (the command names stay public).
+- Internal members of public classes: the plumbing methods of `EntityManager` that are not on `EntityManagerInterface`; the methods of `UnitOfWork` that register, schedule, mark, snapshot or detach, its identity-map lookups and `scheduledUpdates()` (the inspection methods `contains()`, `entityState()`, `scheduledInsertions()`, `scheduledDeletions()`, `originalData()` and `managedEntities()` stay public); all methods of `EntityHydrator` (constructing it stays public); `MetadataFactory::getMetadataFor()`, `hasMetadataFor()` and `mappingResources()` (read metadata through `EntityManager::getClassMetadata()`); `EntityClassRegistry::groups()`, `managerForClass()` and `findByShortName()`; the constructors of the metadata value objects and of the event args.
+
 ## 0.5.0 — 2026-11-23
 
 - Add `SymPress\Orm\EntityManagerInterface` with the application API, implemented by `EntityManager`, so consumers, decorators and test doubles no longer depend on the final class. Plumbing that only the ORM's own classes call (`registerManaged()`, `tablePrefix()`, `tableName()`, `quoteIdentifier()`, `parameterPlaceholder()`, `compileDqlFunctions()`, `applyOutputWalkers()`, `getIdentifierValue()`, `loadAssociationCollection()`, `countAssociationCollection()`, `getConnection()`) stays on `EntityManager` only.
