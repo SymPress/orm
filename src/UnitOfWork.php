@@ -36,6 +36,9 @@ final class UnitOfWork
     /** @var array<int, array<string, list<string>>> */
     private array $collectionSnapshots = [];
 
+    /** @var array<int, true> */
+    private array $uninitializedReferences = [];
+
     /** @param array<string, mixed> $data */
     public function registerManaged(object $entity, ClassMetadata $metadata, array $data): object
     {
@@ -53,6 +56,27 @@ final class UnitOfWork
         $this->mapIdentity($entity, $metadata, $data);
 
         return $entity;
+    }
+
+    /**
+     * Registers an identifier-only reference that the next loaded row for the same identity may initialize.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function registerReference(object $entity, ClassMetadata $metadata, array $data): object
+    {
+        $managed = $this->registerManaged($entity, $metadata, $data);
+
+        if ($managed === $entity) {
+            $this->uninitializedReferences[spl_object_id($entity)] = true;
+        }
+
+        return $managed;
+    }
+
+    public function isUninitializedReference(object $entity): bool
+    {
+        return isset($this->uninitializedReferences[spl_object_id($entity)]);
     }
 
     /** @param array<string, mixed> $data */
@@ -143,6 +167,7 @@ final class UnitOfWork
             $this->deletions[$id],
             $this->explicitUpdates[$id],
             $this->collectionSnapshots[$id],
+            $this->uninitializedReferences[$id],
         );
 
         if ($metadata instanceof ClassMetadata) {
@@ -172,6 +197,7 @@ final class UnitOfWork
         $this->deletions = [];
         $this->explicitUpdates = [];
         $this->collectionSnapshots = [];
+        $this->uninitializedReferences = [];
     }
 
     /** @return list<object> */
@@ -239,7 +265,7 @@ final class UnitOfWork
         $this->states[$id] = EntityState::MANAGED;
         $this->metadata[$id] = $metadata;
         $this->originalData[$id] = $data;
-        unset($this->insertions[$id], $this->deletions[$id], $this->explicitUpdates[$id]);
+        unset($this->insertions[$id], $this->deletions[$id], $this->explicitUpdates[$id], $this->uninitializedReferences[$id]);
         $this->mapIdentity($entity, $metadata, $data);
     }
 

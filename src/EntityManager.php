@@ -386,7 +386,7 @@ final class EntityManager
 
         $data = $this->hydrator->extract($entity, $metadata, $this);
 
-        return $this->unitOfWork->registerManaged($entity, $metadata, $data);
+        return $this->unitOfWork->registerReference($entity, $metadata, $data);
     }
 
     public function lock(object $entity, LockMode $lockMode, mixed $lockVersion = null): void
@@ -432,6 +432,11 @@ final class EntityManager
         );
 
         if ($managed !== $entity) {
+            // A loaded row must not overwrite unflushed changes; only refresh() may do that.
+            if (!$this->unitOfWork->isUninitializedReference($managed)) {
+                return $managed;
+            }
+
             $this->copyEntityState($entity, $managed);
             $this->unitOfWork->markFlushed($managed, $metadata, $this->hydrator->extract($managed, $metadata, $this));
         }
