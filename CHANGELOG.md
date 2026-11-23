@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.12 — 2026-11-23
+
+- Accept named parameters called like the keywords 0.3.11 rejects. `where('l.status = :table')`, `:select`, `:union`, `:intersect` and `:except` threw `Unsupported "table" in DQL expression`; a named parameter is always bound and never reaches SQL as a keyword.
+- Do not split DQL statements at named parameters called `:where` or `:having`. `WHERE l.status = :having` or `HAVING COUNT(l.id) > :where` was cut into the wrong clauses and produced broken SQL.
+
 ## 0.3.11 — 2026-11-23
 
 - Security: reject `;`, subselects (`SELECT`, `TABLE`), `UNION`, `INTERSECT`, `EXCEPT`, SQL comments (`/*`, `#`, `--` before whitespace) and unterminated string literals in query builder fragments (`select()`, `where()`, `having()`, `groupBy()`, join conditions), `Criteria` expressions and DQL strings. They were passed through into the SQL; a comment silently cut off whatever was appended after the fragment, such as a later `andWhere()` filter, `ORDER BY` or `LIMIT`. They now throw `InvalidArgumentException`. Inside string literals they are still allowed, and `a--1` stays arithmetic.
