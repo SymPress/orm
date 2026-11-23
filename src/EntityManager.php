@@ -197,7 +197,10 @@ final class EntityManager implements EntityManagerInterface
 
         try {
             foreach ($this->unitOfWork->managedEntities() as $entity) {
-                $this->dispatchLifecycleEvent(Events::PRE_FLUSH, $entity, $this->getClassMetadata($entity::class));
+                // An unloaded reference has no state to flush; a callback touching it would load it.
+                if (!self::isUnloaded($entity)) {
+                    $this->dispatchLifecycleEvent(Events::PRE_FLUSH, $entity, $this->getClassMetadata($entity::class));
+                }
             }
 
             $this->events->dispatch(Events::ON_FLUSH, new OnFlushEventArgs($this));
@@ -263,7 +266,9 @@ final class EntityManager implements EntityManagerInterface
             }
 
             foreach ($this->unitOfWork->managedEntities() as $entity) {
-                $this->dispatchLifecycleEvent(Events::POST_FLUSH, $entity, $this->getClassMetadata($entity::class));
+                if (!self::isUnloaded($entity)) {
+                    $this->dispatchLifecycleEvent(Events::POST_FLUSH, $entity, $this->getClassMetadata($entity::class));
+                }
             }
 
             if ($startedTransaction) {
@@ -1521,6 +1526,11 @@ final class EntityManager implements EntityManagerInterface
         } finally {
             unset($this->cascadeStack[$key]);
         }
+    }
+
+    private static function isUnloaded(object $entity): bool
+    {
+        return (new \ReflectionClass($entity))->isUninitializedLazyObject($entity);
     }
 
     private function propertyValue(object $entity, string $propertyName): mixed
