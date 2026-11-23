@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SymPress\Orm\Tests\Unit;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use SymPress\Orm\Cache\ArrayCache;
 use SymPress\Orm\EntityHydrator;
@@ -15,6 +16,7 @@ use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Tests\Fixtures\Car;
 use SymPress\Orm\Tests\Fixtures\Garage;
 use SymPress\Orm\Tests\Fixtures\Motorized;
+use SymPress\Orm\Tests\Fixtures\ParkingSpot;
 use SymPress\Orm\Tests\Fixtures\SportsCar;
 use SymPress\Orm\Tests\Fixtures\Trailer;
 use SymPress\Orm\Tests\Fixtures\Vehicle;
@@ -37,6 +39,9 @@ final class SingleTableInheritanceTest extends TestCase
             /** @var list<array<string, mixed>> */
             public array $garages = [];
 
+            /** @var list<array<string, mixed>> */
+            public array $spots = [];
+
             public function get_results(string $query, string|int $output = ARRAY_A): array
             {
                 $this->selects[] = $query;
@@ -51,7 +56,11 @@ final class SingleTableInheritanceTest extends TestCase
                 $id = preg_match("/`id` = '([^']*)'/", $query, $match) === 1 ? $match[1] : null;
 
                 return array_values(array_filter(
-                    str_contains($query, 'FROM `wp_sympress_garages`') ? $this->garages : $this->resultRows,
+                    match (true) {
+                        str_contains($query, 'FROM `wp_sympress_garages`') => $this->garages,
+                        str_contains($query, 'FROM `wp_sympress_parking_spots`') => $this->spots,
+                        default => $this->resultRows,
+                    },
                     static fn (array $row): bool => ($kinds === null || in_array($row['kind'] ?? null, $kinds, true))
                         && ($id === null || $row['id'] === $id),
                 ));
@@ -218,9 +227,35 @@ final class SingleTableInheritanceTest extends TestCase
         // c1 is a managed Car, so it is no SportsCar.
         self::assertNull($manager->find(SportsCar::class, 'c1'));
         self::assertSame([], $this->database->selects);
+    }
+
+    /** @return iterable<string, array{bool}> */
+    public static function rowOfAnotherClassManagedBefore(): iterable
+    {
+        yield 'row not managed' => [false];
+        yield 'row managed as a Car before' => [true];
+    }
+
+    #[DataProvider('rowOfAnotherClassManagedBefore')]
+    public function testReferenceToARowOfAnotherClassFailsOnlyWhenAccessed(bool $managedBefore): void
+    {
+        // The spot points at c1, which is a Car, while its association targets SportsCar.
+        $this->database->spots = [['id' => 'p1', 'car_id' => 'c1']];
+        $manager = $this->manager();
+
+        if ($managedBefore) {
+            self::assertInstanceOf(Car::class, $manager->find(Car::class, 'c1'));
+        }
+
+        $spot = $manager->find(ParkingSpot::class, 'p1');
+        self::assertInstanceOf(ParkingSpot::class, $spot);
+        $reference = $spot->car;
+        self::assertInstanceOf(SportsCar::class, $reference);
+        self::assertTrue((new \ReflectionClass($reference))->isUninitializedLazyObject($reference));
+        self::assertSame($reference, $manager->getReference(SportsCar::class, 'c1'));
 
         $this->expectException(EntityNotFoundException::class);
-        $manager->getReference(SportsCar::class, 'c1');
+        $reference->garage;
     }
 
     public function testUnloadedReferenceOfAnotherClassDoesNotAnswerAHierarchyLookup(): void
@@ -238,7 +273,7 @@ final class SingleTableInheritanceTest extends TestCase
     private function manager(?ArrayCache $cache = null): EntityManager
     {
         $metadata = new MetadataFactory();
-        $registry = new EntityClassRegistry($metadata, classes: [Vehicle::class, Motorized::class, Car::class, SportsCar::class, Trailer::class, Garage::class]);
+        $registry = new EntityClassRegistry($metadata, classes: [Vehicle::class, Motorized::class, Car::class, SportsCar::class, Trailer::class, Garage::class, ParkingSpot::class]);
 
         return new EntityManager($metadata, $registry, new EntityHydrator(), $this->database, secondLevelCache: $cache);
     }

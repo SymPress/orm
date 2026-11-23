@@ -430,8 +430,10 @@ final class EntityManager implements EntityManagerInterface
         $identifierData = $this->normalizeIdentifierData($metadata, $id);
         $managed = $this->unitOfWork->tryGetById($metadata, $identifierData);
 
-        if ($managed !== null) {
-            return $managed instanceof $entityClass ? $managed : throw EntityNotFoundException::fromClassAndIdentifier($entityClass, $identifierData);
+        // A managed row of another class is no reason to fail here: the reference fails when accessed, as it does
+        // when nothing is managed, so the result does not depend on what was loaded before.
+        if ($managed instanceof $entityClass) {
+            return $managed;
         }
 
         // A row of an inheritance root may be a subclass, and a lazy object cannot change its class once created.
