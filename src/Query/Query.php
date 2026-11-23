@@ -14,6 +14,12 @@ final class Query
     private ?CacheInterface $resultCache = null;
     private ?string $resultCacheKey = null;
 
+    /**
+     * Queries are created through the entity manager: createQuery(), createNativeQuery() and
+     * QueryBuilder::getQuery().
+     *
+     * @internal
+     */
     public function __construct(
         private readonly ConnectionInterface $connection,
         private readonly EntityHydrator $hydrator,
