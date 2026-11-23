@@ -24,7 +24,7 @@ Each step is one pull request. Steps with a version ship in that release.
 - [x] **0.5.0** `EntityManagerInterface` and `RepositoryInterface` for consumers,
   decorators and test doubles.
 - [x] **0.5.1** Internals are marked `@internal`. Everything else is public API.
-- [ ] **0.5.1** Backward-compatibility policy, deprecation path, `UPGRADE.md`,
+- [x] Backward-compatibility policy, deprecation path, `UPGRADE.md`,
   `SECURITY.md` and the frozen column type catalog.
 - [ ] **1.0.0** Stable release.
 
@@ -37,6 +37,8 @@ Each step is one pull request. Steps with a version ship in that release.
 - **`json`, `array` and `simple_array` are stored as JSON** in a `longtext`
   column. `simple_array` is not Doctrine's comma-separated format; changing it
   would make existing rows unreadable.
+- **The column type catalog is frozen** as listed in the README. `decimal`
+  hydrates as `float`, and `time` values carry the date 1970-01-01.
 - **Caches are request-scoped.** The second-level cache and the query result
   cache use `CacheInterface` with the bundled `ArrayCache`. Region versions live
   in the PHP process, so a persistent cache is not supported.
