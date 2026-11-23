@@ -9,6 +9,7 @@ use SymPress\Orm\EntityHydrator;
 use SymPress\Orm\EntityManager;
 use SymPress\Orm\Event\Events;
 use SymPress\Orm\Event\LifecycleEventArgs;
+use SymPress\Orm\Exception\OptimisticLockException;
 use SymPress\Orm\Metadata\EntityClassRegistry;
 use SymPress\Orm\Metadata\MetadataFactory;
 use SymPress\Orm\Tests\Fixtures\Article;
@@ -97,6 +98,28 @@ final class PersistExistingRowTest extends TestCase
         $manager->flush();
 
         self::assertSame([['table' => 'wp_sympress_articles', 'data' => ['author_id' => 'bob'], 'where' => ['id' => 'a1']]], $this->database->updated);
+    }
+
+    public function testStaleVersionFailsAndCurrentVersionIsWrittenAndIncremented(): void
+    {
+        $this->database->rows = ['wp_sympress_mailer_logs' => [['id' => 'log-1', 'status' => 'queued', 'version' => '3']]];
+        $stale = $this->manager();
+        $stale->persist(new VersionedEmailLog('log-1', 'sent', 2));
+
+        try {
+            $stale->flush();
+            self::fail('Expected an optimistic lock failure.');
+        } catch (OptimisticLockException) {
+        }
+
+        $manager = $this->manager();
+        $current = new VersionedEmailLog('log-1', 'sent', 3);
+        $manager->persist($current);
+        $manager->flush();
+
+        self::assertSame(['status' => 'sent', 'version' => 4], $this->database->updated[1]['data']);
+        self::assertSame(['id' => 'log-1', 'version' => 3], $this->database->updated[1]['where']);
+        self::assertSame(4, $current->version);
     }
 
     private function manager(): EntityManager
