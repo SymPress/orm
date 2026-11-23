@@ -2,7 +2,7 @@
 
 [![Checks](https://img.shields.io/github/actions/workflow/status/SymPress/orm/qa.yml?branch=main&label=checks)](https://github.com/SymPress/orm/actions/workflows/qa.yml) [![Release](https://img.shields.io/github/v/release/SymPress/orm?label=release)](https://github.com/SymPress/orm/releases) [![PHP](https://img.shields.io/packagist/dependency-v/sympress/orm/php.svg?label=php)](https://packagist.org/packages/sympress/orm) [![Downloads](https://img.shields.io/packagist/dt/sympress/orm.svg?label=downloads)](https://packagist.org/packages/sympress/orm/stats) [![License: GPL-2.0-or-later](https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg)](composer.json)
 
-> **Status:** WIP (Work in Progress)
+> **Status:** WIP (Work in Progress). [ROADMAP.md](ROADMAP.md) lists the steps to 1.0.0.
 
 Doctrine-inspired ORM primitives for WordPress projects that keep `wpdb` as the
 database runtime.
