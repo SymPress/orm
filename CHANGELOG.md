@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0 — 2026-11-24
+
+- First stable release. Everything in `src/` that is not marked `@internal` is public API, and 1.x follows Semantic Versioning: no breaking change before 2.0, deprecations first in a minor release. `docs/backward-compatibility.md` defines what counts as breaking, including that a security fix may reject input that was accepted before and ships in a patch release, and that a changed schema hash that plans no SQL is not breaking. `UPGRADE.md` lists every change from 0.3.8 to 1.0.0 that can require action.
+- Mark the constructor of `Query\Query` `@internal`. It takes only ORM internals; create queries with `EntityManager::createQuery()`, `createNativeQuery()` or `QueryBuilder::getQuery()`. Docblock only.
+
 ## 0.6.2 — 2026-11-24
 
 - Leave nothing scheduled when `persist()` throws. `persist()` registered the object before cascading, so when the cascade then threw (for example the `LogicException` for a second instance of a managed identity), the object and the children cascaded before the failure stayed scheduled, and a caller that caught the exception and called `flush()` inserted the parent without its child. The outermost `persist()` now detaches everything it and its cascade registered when any part of it throws, on the new-object and the existing-row path.
