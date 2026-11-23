@@ -128,6 +128,49 @@ final readonly class EntityHydrator
         return $data;
     }
 
+    /**
+     * Gives each mapped column, to-one or embeddable property of $entity that was never initialized the value of
+     * $row, as hydrate() would. An uninitialized property is no value: it must not overwrite the row with NULL.
+     *
+     * @internal
+     * @param array<string, mixed> $row
+     */
+    public function fillUninitialized(object $entity, ClassMetadata $metadata, array $row, EntityManager $entityManager): void
+    {
+        foreach ($metadata->embeddeds as $embedded) {
+            if (self::isUninitialized($entity, $embedded->propertyName)) {
+                $this->assign($entity, $embedded->propertyName, $this->hydrateEmbedded($embedded, $row));
+            }
+        }
+
+        foreach ($metadata->associations() as $association) {
+            if ($association->isToOne() && self::isUninitialized($entity, $association->propertyName)) {
+                $this->assign($entity, $association->propertyName, $this->associationValue($entity, $association, $row, $entityManager));
+            }
+        }
+
+        foreach ($metadata->columns() as $column) {
+            $path = $column->propertyPath();
+            $owner = count($path) === 1 ? $entity : $this->readPath($entity, array_slice($path, 0, -1));
+
+            if (
+                is_object($owner)
+                && array_key_exists($column->columnName, $row)
+                && $metadata->associationForProperty($column->propertyName) === null
+                && self::isUninitialized($owner, $path[count($path) - 1])
+            ) {
+                $this->assign($owner, $path[count($path) - 1], $this->fromDatabase($column, $row[$column->columnName]));
+            }
+        }
+    }
+
+    private static function isUninitialized(object $object, string $propertyName): bool
+    {
+        $reflection = new \ReflectionObject($object);
+
+        return $reflection->hasProperty($propertyName) && !$reflection->getProperty($propertyName)->isInitialized($object);
+    }
+
     private function rowValue(ClassMetadata $metadata, ColumnMetadata $column, mixed $value, EntityManager $entityManager): mixed
     {
         $association = $metadata->associationForProperty($column->propertyName);

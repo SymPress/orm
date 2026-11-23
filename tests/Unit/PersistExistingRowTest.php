@@ -19,6 +19,7 @@ use SymPress\Orm\Tests\Fixtures\Author;
 use SymPress\Orm\Tests\Fixtures\Car;
 use SymPress\Orm\Tests\Fixtures\ExplicitEmailLog;
 use SymPress\Orm\Tests\Fixtures\Garage;
+use SymPress\Orm\Tests\Fixtures\Memo;
 use SymPress\Orm\Tests\Fixtures\SportsCar;
 use SymPress\Orm\Tests\Fixtures\TypeCatalogEntity;
 use SymPress\Orm\Tests\Fixtures\Vehicle;
@@ -219,12 +220,56 @@ final class PersistExistingRowTest extends TestCase
         self::assertSame([], $this->database->inserted);
     }
 
+    public function testUninitializedPropertiesKeepTheRowsValues(): void
+    {
+        $this->database->rows['wp_sympress_memos'] = [self::memoRow('keep me')];
+        $manager = $this->manager();
+        $memo = new Memo('m1', 'New');
+
+        $manager->persist($memo);
+        $manager->flush();
+
+        // An uninitialized property is no value: it neither overwrites the row with NULL nor stays unreadable.
+        self::assertSame([['table' => 'wp_sympress_memos', 'data' => ['title' => 'New'], 'where' => ['id' => 'm1']]], $this->database->updated);
+        self::assertSame('2020-01-01 00:00:00', $memo->createdAt->format('Y-m-d H:i:s'));
+        self::assertSame('keep me', $memo->note);
+        self::assertSame('ada', $memo->author?->id);
+        self::assertSame('Graz', $memo->address->city);
+    }
+
+    public function testExplicitlyAssignedNullIsWritten(): void
+    {
+        $this->database->rows['wp_sympress_memos'] = [self::memoRow('drop me')];
+        $manager = $this->manager();
+        $memo = new Memo('m1', 'Old');
+        $memo->note = null;
+        $memo->author = null;
+
+        $manager->persist($memo);
+        $manager->flush();
+
+        self::assertSame([['table' => 'wp_sympress_memos', 'data' => ['note' => null, 'author_id' => null], 'where' => ['id' => 'm1']]], $this->database->updated);
+    }
+
+    /** @return array<string, mixed> */
+    private static function memoRow(string $note): array
+    {
+        return [
+            'id' => 'm1',
+            'title' => 'Old',
+            'created_at' => '2020-01-01 00:00:00',
+            'note' => $note,
+            'author_id' => 'ada',
+            'address_city' => 'Graz',
+        ];
+    }
+
     private function manager(?ArrayCache $cache = null): EntityManager
     {
         $metadata = new MetadataFactory();
         $registry = new EntityClassRegistry($metadata, classes: [
             Article::class, Author::class, TypeCatalogEntity::class, VersionedEmailLog::class, ExplicitEmailLog::class,
-            Vehicle::class, Car::class, SportsCar::class, Garage::class,
+            Vehicle::class, Car::class, SportsCar::class, Garage::class, Memo::class,
         ]);
 
         return new EntityManager($metadata, $registry, new EntityHydrator(), $this->database, secondLevelCache: $cache);

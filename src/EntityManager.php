@@ -171,6 +171,10 @@ final class EntityManager implements EntityManagerInterface
 
         // The row is the original data, so flush() writes what differs between the object and the row.
         if ($row !== null) {
+            $this->assertRowClass($metadata, $row, $data);
+            // An uninitialized property is no value: it takes the row's value instead of overwriting it with NULL.
+            $this->hydrator->fillUninitialized($entity, $metadata, $row, $this);
+            $data = $this->hydrator->extract($entity, $metadata, $this);
             $original = $this->existingRowData($metadata, $row, $data);
             $this->unitOfWork->persistExisting($entity, $metadata, $original);
 
@@ -198,19 +202,6 @@ final class EntityManager implements EntityManagerInterface
      */
     private function existingRowData(ClassMetadata $metadata, array $row, array $data): array
     {
-        if ($metadata->discriminatorColumn !== null) {
-            $rowClass = $metadata->discriminatorMap[(string) ($row[$metadata->discriminatorColumn] ?? '')] ?? null;
-
-            if ($rowClass !== $metadata->className) {
-                throw new \LogicException(sprintf(
-                    'Cannot persist "%s" with identifier %s: the row belongs to "%s".',
-                    $metadata->className,
-                    (string) json_encode($this->identifierFromData($metadata, $data)),
-                    $rowClass ?? 'an unmapped discriminator value',
-                ));
-            }
-        }
-
         $original = $this->hydrator->rowData($metadata, $row, $this);
         $version = $metadata->versionColumn();
 
@@ -219,6 +210,28 @@ final class EntityManager implements EntityManagerInterface
         }
 
         return $original;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @param array<string, mixed> $data
+     */
+    private function assertRowClass(ClassMetadata $metadata, array $row, array $data): void
+    {
+        if ($metadata->discriminatorColumn === null) {
+            return;
+        }
+
+        $rowClass = $metadata->discriminatorMap[(string) ($row[$metadata->discriminatorColumn] ?? '')] ?? null;
+
+        if ($rowClass !== $metadata->className) {
+            throw new \LogicException(sprintf(
+                'Cannot persist "%s" with identifier %s: the row belongs to "%s".',
+                $metadata->className,
+                (string) json_encode($this->identifierFromData($metadata, $data)),
+                $rowClass ?? 'an unmapped discriminator value',
+            ));
+        }
     }
 
     public function remove(object $entity): void
