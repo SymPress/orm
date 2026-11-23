@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 — 2026-11-23
+
+- Add `SymPress\Orm\EntityManagerInterface` with the application API, implemented by `EntityManager`, so consumers, decorators and test doubles no longer depend on the final class. Plumbing that only the ORM's own classes call (`registerManaged()`, `tablePrefix()`, `tableName()`, `quoteIdentifier()`, `parameterPlaceholder()`, `compileDqlFunctions()`, `applyOutputWalkers()`, `getIdentifierValue()`, `loadAssociationCollection()`, `countAssociationCollection()`, `getConnection()`) stays on `EntityManager` only.
+- Add `SymPress\Orm\RepositoryInterface` with `find()`, `findAll()`, `findBy()`, `findOneBy()` and `matching()`, implemented by `Repository`. `EntityManagerInterface::getRepository()` returns it, typed by entity class for static analysis; `EntityManager::getRepository()` still returns `Repository`.
+- Alias `EntityManagerInterface` to the public `EntityManager` service, so consumers can autowire the interface.
+- `getEntityManager()` of `LifecycleEventArgs`, `PreUpdateEventArgs`, `OnFlushEventArgs` and `OnClearEventArgs` now declares `EntityManagerInterface` instead of `EntityManager`. The returned object is unchanged; this is the only signature change. At runtime nothing changes; for static analysis, listener code that calls a plumbing method on it needs an `instanceof EntityManager` check.
+
 ## 0.4.2 — 2026-11-23
 
 - Hydrate `time` and `time_immutable` columns on the date `1970-01-01`, as Doctrine does. They got the current date, so the same row yielded a different object on every day and comparisons with a stored or cached value broke after midnight. Behaviour change: code that read the date part of a time value now gets `1970-01-01`. Writing back as `H:i:s` is unchanged.
