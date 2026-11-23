@@ -76,9 +76,10 @@ if (!class_exists('wpdb')) {
 
         public function prepare(string $query, mixed ...$args): string
         {
-            return vsprintf(str_replace(['%d', '%f'], '%s', $query), array_map(
+            return vsprintf(str_replace('%d', '%s', $query), array_map(
                 // Like wpdb::_real_escape(), non-scalar values (objects, null) silently become ''.
-                static fn (mixed $value): string => "'" . (is_scalar($value) ? str_replace("'", "''", (string) $value) : '') . "'",
+                // Floats stay unquoted so %f rounds them to six decimals, as wpdb does.
+                static fn (mixed $value): string|float => is_float($value) ? $value : "'" . (is_scalar($value) ? str_replace("'", "''", (string) $value) : '') . "'",
                 $args,
             ));
         }
