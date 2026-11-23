@@ -19,7 +19,12 @@ use SymPress\Orm\Tests\Fixtures\CachedAuthor;
 use SymPress\Orm\Tests\Fixtures\Course;
 use SymPress\Orm\Tests\Fixtures\ExplicitEmailLog;
 use SymPress\Orm\Tests\Fixtures\MutableEmailLog;
+use SymPress\Orm\Tests\Fixtures\NumericRole;
+use SymPress\Orm\Tests\Fixtures\NumericUser;
+use SymPress\Orm\Tests\Fixtures\Playlist;
 use SymPress\Orm\Tests\Fixtures\Student;
+use SymPress\Orm\Tests\Fixtures\Tenant;
+use SymPress\Orm\Tests\Fixtures\Track;
 use SymPress\Orm\Tests\Fixtures\VersionedEmailLog;
 
 final class EntityManagerTest extends TestCase
@@ -69,6 +74,45 @@ final class EntityManagerTest extends TestCase
         self::assertSame('wp_sympress_mailer_logs', $this->database->updated[0]['table']);
         self::assertSame(['status' => 'sent'], $this->database->updated[0]['data']);
         self::assertSame(['id' => 'log-1'], $this->database->updated[0]['where']);
+    }
+
+    public function testIdentityMapKeyDoesNotDependOnIdentifierType(): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [NumericUser::class, NumericRole::class, Tenant::class]);
+        $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), new \wpdb());
+        $user = new NumericUser(7, 'Ada');
+        $tenant = new Tenant('t-1', 'main', 'Main');
+        $entityManager->persist($user);
+        $entityManager->persist($tenant);
+        $entityManager->flush();
+
+        self::assertSame($user, $entityManager->find(NumericUser::class, '7'));
+        self::assertSame($user, $entityManager->find(NumericUser::class, 7));
+        self::assertSame($tenant, $entityManager->find(Tenant::class, ['code' => 'main', 'tenantId' => 't-1']));
+        self::assertSame($tenant, $entityManager->getReference(Tenant::class, ['tenant_id' => 't-1', 'code' => 'main']));
+    }
+
+    public function testOrphanRemovalDeletesChildRemovedFromCollection(): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [Playlist::class, Track::class]);
+        $database = new \wpdb();
+        $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), $database);
+        $database->resultRows = [['id' => 'playlist-1']];
+        $playlist = $entityManager->find(Playlist::class, 'playlist-1');
+        self::assertInstanceOf(Playlist::class, $playlist);
+        $database->resultRows = [
+            ['id' => 'track-1', 'playlist_id' => 'playlist-1'],
+            ['id' => 'track-2', 'playlist_id' => 'playlist-1'],
+        ];
+        $tracks = $playlist->tracks->toArray();
+        self::assertCount(2, $tracks);
+
+        $playlist->tracks->removeElement($tracks[0]);
+        $entityManager->flush();
+
+        self::assertSame([['table' => 'wp_sympress_tracks', 'where' => ['id' => 'track-1']]], $database->deleted);
     }
 
     public function testRemoveSchedulesDeletionUntilFlush(): void
