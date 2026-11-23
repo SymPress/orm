@@ -7,6 +7,7 @@ namespace SymPress\Orm\Metadata;
 final readonly class JoinTableMetadata
 {
     /**
+     * @internal
      * @param list<JoinColumnMetadata> $joinColumns
      * @param list<JoinColumnMetadata> $inverseJoinColumns
      */

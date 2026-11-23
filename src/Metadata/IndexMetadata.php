@@ -6,7 +6,10 @@ namespace SymPress\Orm\Metadata;
 
 final readonly class IndexMetadata
 {
-    /** @param list<string> $columns */
+    /**
+     * @internal
+     * @param list<string> $columns
+     */
     public function __construct(
         public string $name,
         public array $columns,

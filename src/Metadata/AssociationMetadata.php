@@ -12,6 +12,7 @@ final readonly class AssociationMetadata
     public const string MANY_TO_MANY = 'manyToMany';
 
     /**
+     * @internal
      * @param class-string $targetEntity
      * @param list<string> $cascade
      * @param list<JoinColumnMetadata> $joinColumns
