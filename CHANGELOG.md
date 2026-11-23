@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.3 — 2026-11-23
+
+- Parenthesize query predicates where they are combined. `where()`, `andWhere()`, `having()`, `andHaving()`, join conditions and the `orWhere()` composition joined fragments with ` AND ` without parentheses, so an `OR` inside one fragment bound across the `AND`: `where('a.title = :t OR a.title = :u')->andWhere('a.author = :au')` filtered by author in the second branch only, `orWhere()` followed by `andWhere()` compiled to `(A) OR (B) AND C`, and `JOIN a.author au WITH au.name = :n OR au.name = :m` joined every author named `:m` to every article. The same reached `Criteria` and `Repository::matching()`. Each fragment now stays one predicate; a single `where()` or `having()` predicate keeps its SQL. Behaviour change: such queries return fewer rows and different SQL; see `UPGRADE.md`.
+
 ## 0.5.2 — 2026-11-23
 
 - Security: quote string parameters written directly after a `%` in query builder fragments, `Criteria` expressions and DQL strings. Affected versions: 0.3.9 to 0.5.1. Since 0.3.9 a literal `%` is escaped as `%%`, so `where('u.id %:n = 0')` or DQL `u.id %?1` compiled to `%%%s`, and `wpdb::prepare()` leaves a `%s` unquoted when a `%` stands directly before it. A string value was escaped but not quoted and became part of the SQL: `setParameter('n', '2 OR 1=1')` produced `WHERE u.id %2 OR 1=1 = 0`, in `SELECT` as well as in DQL `UPDATE` and `DELETE`. A parameter between two string literals written without spaces (`'a':n'b'`) had the same effect, because `prepare()` drops the quotes of `'%s'`. Such a placeholder is now set off by a space and quoted. Queries without a parameter directly after `%` or between two literals were not affected, and their SQL is unchanged.
