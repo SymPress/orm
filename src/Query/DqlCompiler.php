@@ -278,7 +278,7 @@ final readonly class DqlCompiler
     ): string {
 
         // A literal % has to reach wpdb::prepare() as %%; see unpreparedSql().
-        $mask = LiteralMask::mask(str_replace('%', '%%', $entityManager->compileDqlFunctions($expression)));
+        $mask = LiteralMask::expression(str_replace('%', '%%', $entityManager->compileDqlFunctions($expression)));
         $expression = preg_replace_callback(
             '/\b([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\b/',
             static function (array $matches) use ($aliases, $entityManager): string {
