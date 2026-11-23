@@ -171,7 +171,7 @@ final class EntityManager implements EntityManagerInterface
 
         // The row is the original data, so flush() writes what differs between the object and the row.
         if ($row !== null) {
-            $this->unitOfWork->persistExisting($entity, $metadata, $this->hydrator->rowData($metadata, $row, $this));
+            $this->unitOfWork->persistExisting($entity, $metadata, $this->existingRowData($metadata, $row, $data));
 
             $this->cascade($entity, $metadata, 'persist');
             return;
@@ -180,6 +180,26 @@ final class EntityManager implements EntityManagerInterface
         $this->dispatchLifecycleEvent(Events::PRE_PERSIST, $entity, $metadata);
         $this->unitOfWork->persistNew($entity, $metadata, $this->hydrator->extract($entity, $metadata, $this));
         $this->cascade($entity, $metadata, 'persist');
+    }
+
+    /**
+     * The original data of an object persisted for an existing row: the row as find() records it, except that the
+     * version is the one the object carries, so a stale object fails the optimistic lock check in flush().
+     *
+     * @param array<string, mixed> $row
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function existingRowData(ClassMetadata $metadata, array $row, array $data): array
+    {
+        $original = $this->hydrator->rowData($metadata, $row, $this);
+        $version = $metadata->versionColumn();
+
+        if ($version instanceof ColumnMetadata) {
+            $original[$version->columnName] = $data[$version->columnName] ?? null;
+        }
+
+        return $original;
     }
 
     public function remove(object $entity): void
