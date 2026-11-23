@@ -1,6 +1,6 @@
 # Roadmap to 1.0.0
 
-Status: 0.5.9 (2026-11-23).
+Status: 0.6.0 (2026-11-23).
 
 1.0.0 freezes the contract of what the package already does: attribute mapping,
 the unit of work, repositories, the query builder with its DQL subset,
@@ -44,6 +44,9 @@ Each step is one pull request. Steps with a version ship in that release.
   would make existing rows unreadable.
 - **The column type catalog is frozen** as listed in the README. `decimal`
   hydrates as `float`, and `time` values carry the date 1970-01-01.
+- **`persist()` of an existing row writes the object.** The row becomes the
+  original data and `flush()` writes the differences; there is no option to
+  re-attach an object without writing it.
 - **Caches are request-scoped.** The second-level cache and the query result
   cache use `CacheInterface` with the bundled `ArrayCache`. Region versions live
   in the PHP process, so a persistent cache is not supported.
