@@ -424,6 +424,23 @@ final class EntityManagerTest extends TestCase
         self::assertSame('Hedy', $reader->find(CachedAuthor::class, 'author-3')?->name);
     }
 
+    public function testRowsReadInsideTransactionAreNotCached(): void
+    {
+        $metadataFactory = new MetadataFactory();
+        $registry = new EntityClassRegistry($metadataFactory, classes: [CachedAuthor::class]);
+        $database = new \wpdb();
+        $entityManager = new EntityManager($metadataFactory, $registry, new EntityHydrator(), $database, secondLevelCache: new ArrayCache());
+        $database->resultRows = [['id' => 'author-1', 'name' => 'Uncommitted']];
+
+        $entityManager->getConnection()->beginTransaction();
+        $entityManager->find(CachedAuthor::class, 'author-1');
+        $entityManager->getConnection()->rollBack();
+        $entityManager->clear();
+        $database->resultRows = [['id' => 'author-1', 'name' => 'Ada']];
+
+        self::assertSame('Ada', $entityManager->find(CachedAuthor::class, 'author-1')?->name);
+    }
+
     public function testAssociationCacheIsInvalidatedAfterTargetWrite(): void
     {
         $metadataFactory = new MetadataFactory();
