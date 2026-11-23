@@ -20,12 +20,16 @@ use SymPress\Orm\Schema\SchemaSqlGenerator;
 use SymPress\Orm\Schema\SchemaTool;
 use SymPress\Orm\Tests\Fixtures\Article;
 use SymPress\Orm\Tests\Fixtures\Author;
+use SymPress\Orm\Tests\Fixtures\Car;
 use SymPress\Orm\Tests\Fixtures\EmailLog;
+use SymPress\Orm\Tests\Fixtures\Garage;
 use SymPress\Orm\Tests\Fixtures\MailStatus;
 use SymPress\Orm\Tests\Fixtures\NumericRole;
 use SymPress\Orm\Tests\Fixtures\NarrowEmailLog;
+use SymPress\Orm\Tests\Fixtures\SportsCar;
 use SymPress\Orm\Tests\Fixtures\StringDefaults;
 use SymPress\Orm\Tests\Fixtures\StringDefaultsWithMemo;
+use SymPress\Orm\Tests\Fixtures\Vehicle;
 use SymPress\WordPress\Migration\Application\MigrationLifecycle;
 use SymPress\WordPress\Migration\Domain\MigrationCollection;
 use SymPress\WordPress\Migration\Domain\MigrationManager;
@@ -50,7 +54,7 @@ final class OrmDatabaseTest extends TestCase
 
     private function cleanup(): void
     {
-        foreach (['sympress_articles', 'sympress_authors', 'sympress_mailer_logs', 'sympress_numeric_roles', 'orm_review_state', 'orm_review_state_history', 'orm_string_defaults'] as $name) {
+        foreach (['sympress_articles', 'sympress_authors', 'sympress_mailer_logs', 'sympress_numeric_roles', 'orm_review_state', 'orm_review_state_history', 'orm_string_defaults', 'sympress_vehicles', 'sympress_garages', 'sympress_garage_rentals'] as $name) {
             $this->database->query($this->database->prepare('DROP TABLE IF EXISTS %i', $this->database->prefix . $name));
         }
     }
@@ -266,6 +270,26 @@ final class OrmDatabaseTest extends TestCase
 
         // Without parentheses the author filter applied to the second branch only and Bob's article matched too.
         self::assertSame(['by-ada'], array_map(static fn (Article $article): string => $article->id, $articles));
+    }
+
+    public function testQueriesOnASingleTableSubclassSeeOnlyItsRows(): void
+    {
+        $metadata = new MetadataFactory();
+        $entities = new EntityClassRegistry($metadata, classes: [Vehicle::class, Car::class, SportsCar::class, Garage::class]);
+        $tool = new SchemaTool($metadata, $entities, new SchemaSqlGenerator(), $this->database);
+        self::assertTrue((new WordPressSqlExecutor($this->database))->execute($tool->getCreateSchemaSql()));
+        $manager = new EntityManager($metadata, $entities, new EntityHydrator(), $this->database);
+        $manager->persist(new Vehicle('v1'));
+        $manager->persist(new Car('c1'));
+        $manager->persist(new SportsCar('s1'));
+        $manager->flush();
+        $manager->clear();
+        $ids = static fn (array $vehicles): array => array_map(static fn (Vehicle $vehicle): string => $vehicle->id, $vehicles);
+
+        self::assertSame(['c1', 's1'], $ids($manager->getRepository(Car::class)->findBy([], ['id' => 'ASC'])));
+        self::assertNull($manager->find(Car::class, 'v1'));
+        $manager->createQuery('DELETE FROM Car c WHERE c.id <> :none', ['none' => 'x'])->execute();
+        self::assertSame(['v1'], $this->database->get_col('SELECT id FROM wp_sympress_vehicles'));
     }
 
     public function testSavepointsRollBackInnerWritesWhileCommittingOuterWrites(): void
