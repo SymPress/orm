@@ -40,10 +40,18 @@ These change only in a major release:
 
 - Anything marked `@internal`.
 - The exact SQL text of generated queries and DDL, as long as it means the same.
-  If generated DDL changes text but not the schema, the migration bridge can
-  report one pending schema migration that plans no SQL; the changelog says so.
+- A changed schema hash that plans no SQL. When generated DDL changes text but
+  not the schema, the migration bridge reports one pending schema migration
+  that plans no SQL; running it changes nothing. The changelog says so.
 - Exception messages. Exception classes and when they are thrown are public API.
 - New classes, methods, optional parameters and column types.
+
+## Security fixes
+
+A security fix may reject input that was accepted before, for example a query
+fragment syntax that could change the meaning of a query. It ships in a patch
+release, not a major one, and the changelog calls it out with an entry that
+starts with `Security:`.
 
 ## Deprecations
 
