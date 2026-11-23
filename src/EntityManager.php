@@ -114,13 +114,13 @@ final class EntityManager
     {
         $this->assertOpen();
 
-        $managed = $this->unitOfWork->tryGetById($entityClass, $id);
+        $metadata = $this->getClassMetadata($entityClass);
+        $managed = $this->unitOfWork->tryGetById($entityClass, $this->normalizeIdentifierData($metadata, $id));
 
         if ($managed !== null) {
             return $managed;
         }
 
-        $metadata = $this->getClassMetadata($entityClass);
         $cached = $this->secondLevelCache?->get($this->entityCacheKey($metadata, $id));
 
         if (is_array($cached)) {
@@ -365,16 +365,16 @@ final class EntityManager
     {
         $this->assertOpen();
 
-        $managed = $this->unitOfWork->tryGetById($entityClass, $id);
+        $metadata = $this->getClassMetadata($entityClass);
+        $identifierData = $this->normalizeIdentifierData($metadata, $id);
+        $managed = $this->unitOfWork->tryGetById($entityClass, $identifierData);
 
         if ($managed !== null) {
             return $managed;
         }
 
-        $metadata = $this->getClassMetadata($entityClass);
         $reflection = new \ReflectionClass($entityClass);
         $entity = $reflection->newInstanceWithoutConstructor();
-        $identifierData = $this->normalizeIdentifierData($metadata, $id);
 
         foreach ($metadata->columns() as $column) {
             if (!array_key_exists($column->columnName, $identifierData)) {
@@ -1178,21 +1178,12 @@ final class EntityManager
 
     private function identifierKey(object $entity, ClassMetadata $metadata): string
     {
-        $identifier = $this->identifierWhere($entity, $metadata);
-        ksort($identifier);
-
-        return count($identifier) === 1 ? (string) reset($identifier) : hash('sha256', serialize($identifier));
+        return $this->unitOfWork->identifierKey($this->identifierWhere($entity, $metadata));
     }
 
     private function identifierValueKey(mixed $identifier): string
     {
-        if (!is_array($identifier)) {
-            return is_scalar($identifier) ? (string) $identifier : hash('sha256', serialize($identifier));
-        }
-
-        ksort($identifier);
-
-        return hash('sha256', serialize($identifier));
+        return $this->unitOfWork->identifierKey($identifier);
     }
 
     /** @param array<string, mixed> $data */

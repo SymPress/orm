@@ -251,9 +251,7 @@ final class UnitOfWork
     /** @param class-string $className */
     public function tryGetById(string $className, mixed $id): ?object
     {
-        $key = $this->identityKeyFromIdentifier($id);
-
-        return $this->identityMap[$className][$key] ?? null;
+        return $this->identityMap[$className][$this->identifierKey($id)] ?? null;
     }
 
     /** @return array<string, mixed> */
@@ -349,18 +347,27 @@ final class UnitOfWork
             $values[$column->columnName] = $value;
         }
 
-        return $this->identityKeyFromIdentifier($values);
+        return $this->identifierKey($values);
     }
 
-    private function identityKeyFromIdentifier(mixed $identifier): string
+    /**
+     * Builds the identity-map key for a scalar, single-column or composite identifier.
+     *
+     * Values are compared as strings because wpdb returns every column as a string.
+     */
+    public function identifierKey(mixed $identifier): string
     {
+        if (is_array($identifier) && count($identifier) === 1) {
+            $identifier = reset($identifier);
+        }
+
         if (!is_array($identifier)) {
             return $this->stringKey($identifier);
         }
 
         ksort($identifier);
 
-        return hash('sha256', serialize($identifier));
+        return hash('sha256', serialize(array_map(fn (mixed $value): string => $this->stringKey($value), $identifier)));
     }
 
     private function stringKey(mixed $value): string
