@@ -7,6 +7,7 @@ namespace SymPress\Orm\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use SymPress\Orm\EntityHydrator;
 use SymPress\Orm\EntityManager;
+use SymPress\Orm\EntityState;
 use SymPress\Orm\Event\Events;
 use SymPress\Orm\Event\LifecycleEventArgs;
 use SymPress\Orm\Exception\OptimisticLockException;
@@ -98,6 +99,46 @@ final class PersistExistingRowTest extends TestCase
         $manager->flush();
 
         self::assertSame([['table' => 'wp_sympress_articles', 'data' => ['author_id' => 'bob'], 'where' => ['id' => 'a1']]], $this->database->updated);
+    }
+
+    public function testEveryColumnTypeRoundTripsWithoutASpuriousUpdate(): void
+    {
+        $row = [
+            'id' => 'g-1',
+            'title' => 'T',
+            'body' => 'B',
+            'payload' => '{"a":1,"b":[true,null]}',
+            'tags' => '[1,"x"]',
+            'labels' => '["a","b"]',
+            'rank' => '3',
+            'attempts' => '7',
+            'bytes' => '9007199254740993',
+            'active' => '1',
+            'archived' => '0',
+            'ratio' => '0.5',
+            'score' => '1.25',
+            'price' => '9.90',
+            'day' => '2026-11-23',
+            'day_immutable' => '2026-11-24',
+            'at' => '2026-11-23 10:00:00',
+            'at_immutable' => '2026-11-23 11:00:00',
+            'clock' => '10:30:00',
+            'clock_immutable' => '11:45:00',
+            'status' => 'queued',
+            'priority' => '2',
+            'note' => null,
+        ];
+        $this->database->rows = ['wp_type_catalog' => [$row]];
+        // The same row loaded through find() in another entity manager, then persisted here as an unmanaged object.
+        $copy = $this->manager()->find(TypeCatalogEntity::class, 'g-1');
+        self::assertInstanceOf(TypeCatalogEntity::class, $copy);
+        $manager = $this->manager();
+
+        $manager->persist($copy);
+        $manager->flush();
+
+        self::assertSame([], $this->database->updated);
+        self::assertSame(EntityState::MANAGED, $manager->getUnitOfWork()->entityState($copy));
     }
 
     public function testStaleVersionFailsAndCurrentVersionIsWrittenAndIncremented(): void
