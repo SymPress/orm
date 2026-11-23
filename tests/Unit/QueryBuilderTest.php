@@ -278,7 +278,7 @@ final class QueryBuilderTest extends TestCase
         );
 
         self::assertSame(
-            "SELECT `l`.* FROM `wp_sympress_mailer_logs` `l` WHERE YEAR(`l`.`created_at`) = '2026' /* traced */",
+            'SELECT `l`.* FROM `wp_sympress_mailer_logs` `l` WHERE YEAR(`l`.`created_at`) = 2026 /* traced */',
             $query->getSQL(),
         );
     }
