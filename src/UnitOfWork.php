@@ -42,7 +42,10 @@ final class UnitOfWork
     /** @var array<string, list<ClassMetadata>> concrete metadata of the rows being hydrated, by identifier key */
     private array $hydrating = [];
 
-    /** @param array<string, mixed> $data */
+    /**
+     * @internal
+     * @param array<string, mixed> $data
+     */
     public function registerManaged(object $entity, ClassMetadata $metadata, array $data): object
     {
         $existing = $this->entityByIdentity($metadata, $data);
@@ -64,6 +67,7 @@ final class UnitOfWork
     /**
      * Registers an identifier-only reference that the next loaded row for the same identity may initialize.
      *
+     * @internal
      * @param array<string, mixed> $data
      */
     public function registerReference(object $entity, ClassMetadata $metadata, array $data): object
@@ -77,6 +81,7 @@ final class UnitOfWork
         return $managed;
     }
 
+    /** @internal */
     public function isUninitializedReference(object $entity): bool
     {
         return isset($this->uninitializedReferences[spl_object_id($entity)]);
@@ -124,7 +129,10 @@ final class UnitOfWork
         return null;
     }
 
-    /** @param array<string, mixed> $data */
+    /**
+     * @internal
+     * @param array<string, mixed> $data
+     */
     public function persistNew(object $entity, ClassMetadata $metadata, array $data): void
     {
         $id = spl_object_id($entity);
@@ -138,7 +146,10 @@ final class UnitOfWork
         $this->mapIdentity($entity, $metadata, $data);
     }
 
-    /** @param array<string, mixed> $data */
+    /**
+     * @internal
+     * @param array<string, mixed> $data
+     */
     public function persistExisting(object $entity, ClassMetadata $metadata, array $data): void
     {
         $id = spl_object_id($entity);
@@ -157,6 +168,7 @@ final class UnitOfWork
         $this->mapIdentity($entity, $metadata, $data);
     }
 
+    /** @internal */
     public function remove(object $entity): void
     {
         $id = spl_object_id($entity);
@@ -170,6 +182,7 @@ final class UnitOfWork
         $this->states[$id] = EntityState::REMOVED;
     }
 
+    /** @internal */
     public function scheduleExplicitUpdate(object $entity): void
     {
         if (!$this->contains($entity)) {
@@ -197,6 +210,7 @@ final class UnitOfWork
         return $metadata instanceof ClassMetadata ? EntityState::DETACHED : $default;
     }
 
+    /** @internal */
     public function detach(object $entity): void
     {
         $id = spl_object_id($entity);
@@ -220,7 +234,10 @@ final class UnitOfWork
         }
     }
 
-    /** @param class-string|null $entityClass */
+    /**
+     * @internal
+     * @param class-string|null $entityClass
+     */
     public function clear(?string $entityClass = null): void
     {
         if ($entityClass !== null) {
@@ -258,6 +275,7 @@ final class UnitOfWork
     }
 
     /**
+     * @internal
      * @return list<array{entity: object, metadata: ClassMetadata, changes: array<string, mixed>, original: array<string, mixed>}>
      */
     public function scheduledUpdates(EntityHydrator $hydrator, ?EntityManager $entityManager = null): array
@@ -300,7 +318,10 @@ final class UnitOfWork
         return $updates;
     }
 
-    /** @param array<string, mixed> $data */
+    /**
+     * @internal
+     * @param array<string, mixed> $data
+     */
     public function markFlushed(object $entity, ClassMetadata $metadata, array $data): void
     {
         $id = spl_object_id($entity);
@@ -314,12 +335,16 @@ final class UnitOfWork
         $this->mapIdentity($entity, $metadata, $data);
     }
 
+    /** @internal */
     public function markRemoved(object $entity): void
     {
         $this->detach($entity);
     }
 
-    /** @param class-string $className */
+    /**
+     * @internal
+     * @param class-string $className
+     */
     public function tryGetById(string $className, mixed $id): ?object
     {
         return $this->identityMap[$className][$this->identifierKey($id)] ?? null;
@@ -331,7 +356,10 @@ final class UnitOfWork
         return $this->originalData[spl_object_id($entity)] ?? [];
     }
 
-    /** @param list<mixed> $identifiers */
+    /**
+     * @internal
+     * @param list<mixed> $identifiers
+     */
     public function setCollectionSnapshot(object $entity, string $association, array $identifiers): void
     {
         $this->collectionSnapshots[spl_object_id($entity)][$association] = array_values(array_map(
@@ -340,12 +368,16 @@ final class UnitOfWork
         ));
     }
 
-    /** @return list<string> */
+    /**
+     * @internal
+     * @return list<string>
+     */
     public function collectionSnapshot(object $entity, string $association): array
     {
         return $this->collectionSnapshots[spl_object_id($entity)][$association] ?? [];
     }
 
+    /** @internal */
     public function hasCollectionSnapshot(object $entity, string $association): bool
     {
         return array_key_exists($association, $this->collectionSnapshots[spl_object_id($entity)] ?? []);
@@ -425,6 +457,8 @@ final class UnitOfWork
      * Builds the identity-map key for a scalar, single-column or composite identifier.
      *
      * Values are compared as strings because wpdb returns every column as a string.
+     *
+     * @internal
      */
     public function identifierKey(mixed $identifier): string
     {
